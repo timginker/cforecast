@@ -2,6 +2,7 @@
 
 export(cforecast)
 import(FKF)
+import(vars)
 importFrom(methods,is)
 importFrom(utils,tail)
 importFrom(vars,Acoef)

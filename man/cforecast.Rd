@@ -11,15 +11,28 @@ cforecast(fit, cond_path, cond_var, horizon = NULL)
 
 \item{cond_path}{A vector or matrix specifying the conditional path}
 
-\item{cond_var}{A vector indicating which columns of \code{y} are conditionally constrained}
+\item{cond_var}{A vector indicating which columns of `y` are conditionally constrained}
 
-\item{horizon}{Forecast horizon. If NULL, the number of rows in \code{cond_path} is used}
+\item{horizon}{Forecast horizon. If NULL, the number of rows in `cond_path` is used}
 }
 \value{
 A list with the forecast, the forecast MSE, and supporting Kalman state space objects
 }
 \description{
 Computes conditional forecasts using the methods proposed by Clarida and Coyle (1984) and Banbura et al. (2015).
+}
+\examples{
+# Exploring an increase in the unemployment rate (U)
+library(vars)
+data(Canada)
+fit <- VAR(Canada, p = 2, type = "const")
+
+# Define a conditional path: unemployment at 15 for 3 periods
+cond_path <- matrix(rep(15, 3), ncol = 1)
+cond_var <- 4  # 4th column is 'U'
+
+conditional_forecast <- cforecast(fit = fit, cond_path = cond_path, cond_var = cond_var)
+print(conditional_forecast$forecast)
 }
 \references{
 Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.

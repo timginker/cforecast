@@ -7,7 +7,7 @@
 #' @param cond_var A vector indicating which columns of `y` are conditionally constrained
 #' @param horizon Forecast horizon. If NULL, the number of rows in `cond_path` is used
 #'
-#' @import FKF
+#' @import FKF vars
 #' @importFrom utils tail
 #' @importFrom vars Acoef Bcoef
 #' @importFrom methods is
@@ -18,6 +18,19 @@
 #' @return A list with the forecast, the forecast MSE, and supporting Kalman state space objects
 #' @export
 #'
+#' @examples
+#' # Exploring an increase in the unemployment rate (U)
+#' library(vars)
+#' data(Canada)
+#' fit <- VAR(Canada, p = 2, type = "const")
+#'
+#' # Define a conditional path: unemployment at 15 for 3 periods
+#' cond_path <- matrix(rep(15, 3), ncol = 1)
+#' cond_var <- 4  # 4th column is 'U'
+#'
+#' conditional_forecast <- cforecast(fit = fit, cond_path = cond_path, cond_var = cond_var)
+#' print(conditional_forecast$forecast)
+
 cforecast <- function(fit, cond_path, cond_var, horizon = NULL) {
 
   if (is(fit, "varest")) {
@@ -75,8 +88,20 @@ cforecast <- function(fit, cond_path, cond_var, horizon = NULL) {
     fks_res <- FKF::fks(fkf_res)
 
     ## Extract forecast and MSE
-    forecast <- round(tail(t(fks_res$ahatt)[, 1:K], h), 7)
-    mse <- fks_res$Vt[1:K, 1:K, (dim(fks_res$Vt)[3] - h + 1):dim(fks_res$Vt)[3]]
+    forecast <- tail(t(Zt%*%fks_res$ahatt),h)
+
+    if(!is.null(colnames(fit$y))){
+
+      colnames(forecast)=colnames(fit$y)
+    }
+
+    mse <- array(0,dim=c(dim(forecast)[2],dim(forecast)[2],dim(forecast)[1]))
+
+    for (i in 1:dim(mse)[3]) {
+
+      mse[,,i]=round(t(Zt%*%fks_res$Vt[,,dim(fks_res$Vt)[3]-h+i]%*%t(Zt)),10)
+
+    }
 
     return(list(
       forecast = forecast,
@@ -86,6 +111,7 @@ cforecast <- function(fit, cond_path, cond_var, horizon = NULL) {
                 Tt = Tt, Zt = Zt, HHt = HHt, GGt = GGt)
     ))
   }
+
 
   stop("`fit` must be of class 'varest'. Support for 'bvar' not yet implemented.")
 }

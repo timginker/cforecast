@@ -1,11 +1,26 @@
 Package: cforecast
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Type: Package
+Title: Conditional Forecasting and Scenario Analysis Using VAR Models
+Version: 0.1.0
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    person(given = "Tim",
+           family = "Ginker",
+           role = c("aut", "cre"),
+           email = "tim.ginker@example.com")
+Description: 
+    Provides tools for conducting conditional forecasts and scenario analysis 
+    using vector autoregressive (VAR) models. Implements the Kalman filtering 
+    methodology described in Clarida and Coyle (1984) and Banbura, Giannone, 
+    and Lenza (2015), allowing users to impose constraints on future paths 
+    of selected variables and simulate resulting forecast distributions.
+Depends: 
+    R (>= 3.5.0)
+Imports:
+    FKF,
+    vars,
+    utils,
+    methods
+License: GPL (>= 3)
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
+LazyData: true
 RoxygenNote: 7.3.2
