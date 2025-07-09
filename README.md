@@ -1,4 +1,6 @@
 
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
 # cforecast
 
 **cforecast** is an R package for conducting conditional forecasts and
@@ -68,7 +70,7 @@ ggplot(df, aes(x = Time, y = Forecast)) +
   )
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
+<img src="man/figures/README-unnamed-chunk-2-1.png" width="100%" />
 
 ## References
 
