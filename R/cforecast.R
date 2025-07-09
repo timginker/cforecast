@@ -2,10 +2,10 @@
 #'
 #' Computes conditional forecasts using the methods proposed by Clarida and Coyle (1984) and Banbura et al. (2015).
 #'
-#' @param fit An object of class 'varest' or bvar
-#' @param cond_path A vector or a matrix with conditional path
-#' @param cond_var A vector with constrained columns in y
-#' @param horizon forecast horizon
+#' @param fit An object of class 'varest' or 'bvar'
+#' @param cond_path A vector or matrix specifying the conditional path
+#' @param cond_var A vector indicating which columns of `y` are conditionally constrained
+#' @param horizon Forecast horizon. If NULL, the number of rows in `cond_path` is used
 #'
 #' @import FKF
 #' @importFrom utils tail
@@ -13,110 +13,79 @@
 #' @importFrom methods is
 #'
 #' @references Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
-#' @references Bańbura, M., Giannone, D. and M. Lenza (2015) . Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections. International Journal of forecasting, 31(3), pp.739-756.
+#' @references Bańbura, M., Giannone, D. and M. Lenza (2015). Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections. International Journal of Forecasting, 31(3), 739–756.
 #'
-#' @returns A list with forecasts and the associated MSE
+#' @return A list with the forecast, the forecast MSE, and supporting Kalman state space objects
 #' @export
 #'
-cforecast<-function(fit,
-                    cond_path,
-                    cond_var,
-                    horizon=NULL){
+cforecast <- function(fit, cond_path, cond_var, horizon = NULL) {
 
-  # if(!(class(fit)%in%c('varest','bvar'))){
-  #   stop("fit argument should be of class varest or bvar")
-  # }
+  if (is(fit, "varest")) {
 
-  if(is(fit,"varest")){
+    K <- fit$K
+    p <- fit$p
+    n_state <- K * p
 
-    # creating companion matrix
-
-    companion=matrix(0,nrow = fit$p*fit$K,ncol=fit$p*fit$K)
-
-    for(j in 0:(fit$p-1)){
-
-      companion[1:fit$K,(j*fit$K+1):((j+1)*fit$K)]=vars::Acoef(fit)[[j+1]]
-
+    ## Construct companion matrix
+    companion_matrix <- matrix(0, nrow = n_state, ncol = n_state)
+    for (j in 0:(p - 1)) {
+      companion_matrix[1:K, (j * K + 1):((j + 1) * K)] <- vars::Acoef(fit)[[j + 1]]
+    }
+    if (p > 1) {
+      companion_matrix[(K + 1):n_state, 1:(n_state - K)] <- diag(1, nrow = n_state - K)
     }
 
-    if(fit$p>1){
+    ## Kalman system matrices
+    Tt <- companion_matrix
+    Zt <- matrix(0, nrow = K, ncol = n_state)
+    Zt[1:K, 1:K] <- diag(K)
+    GGt <- matrix(0, nrow = K, ncol = K)
+    ct <- matrix(0, nrow = K, ncol = 1)
 
-      companion[(fit$K+1):(fit$K*fit$p),1:(fit$K*(fit$p-1))]=diag(1,nrow = (fit$K*(fit$p-1)))
+    HHt <- matrix(0, nrow = n_state, ncol = n_state)
+    HHt[1:K, 1:K] <- summary(fit)$covres
 
+    dt <- matrix(0, nrow = n_state, ncol = 1)
+    if (fit$type == "const") {
+      dt[1:K] <- vars::Bcoef(fit)[1:K, K * p + 1]
     }
 
-    Tt=companion
+    a0 <- matrix(0, nrow = n_state, ncol = 1)
+    P0 <- diag(1e6, nrow = n_state)
 
-    Zt=matrix(0,nrow = fit$K, ncol= fit$K*fit$p)
+    ## Determine horizon and initialize future observations
+    cond_path <- as.matrix(cond_path)
+    path_length <- nrow(cond_path)
+    h <- if (is.null(horizon)) path_length else horizon
+    nrows <- max(h, path_length)
 
-    Zt[1:fit$K,1:fit$K]=diag(1,nrow = fit$K)
-
-    GGt=matrix(0,nrow = fit$K,ncol = fit$K)
-
-    ct=matrix(0,nrow = fit$K,ncol=1)
-
-    HHt=matrix(0,nrow = fit$p*fit$K,ncol = fit$p*fit$K)
-
-    HHt[1:fit$K,1:fit$K]=summary(fit)$covres
-
-    dt=matrix(0,nrow = fit$p*fit$K,ncol=1)
-
-    if(fit$type=="const"){
-
-      dt[1:fit$K]=vars::Bcoef(fit)[1:fit$K,(fit$K*fit$p+1)]
-
+    future_obs <- matrix(NA, nrow = nrows, ncol = K)
+    for (i in seq_along(cond_var)) {
+      future_obs[1:path_length, cond_var[i]] <- cond_path[, i]
     }
 
-    a0=matrix(0,nrow = fit$p*fit$K, ncol=1)
+    colnames(future_obs) <- colnames(fit$y)
+    y_all <- rbind(fit$y, future_obs)
 
-    P0=diag(10^6,nrow = fit$p*fit$K)
+    ## Run Kalman filter and smoother
+    fkf_res <- FKF::fkf(
+      a0 = as.numeric(a0), P0 = P0, dt = dt, ct = ct,
+      Tt = Tt, Zt = Zt, HHt = HHt, GGt = GGt, yt = t(y_all)
+    )
+    fks_res <- FKF::fks(fkf_res)
 
-    # adding rows
+    ## Extract forecast and MSE
+    forecast <- round(tail(t(fks_res$ahatt)[, 1:K], h), 7)
+    mse <- fks_res$Vt[1:K, 1:K, (dim(fks_res$Vt)[3] - h + 1):dim(fks_res$Vt)[3]]
 
-    if(is.null(horizon)){
-
-      horizon=nrow(as.matrix(cond_path))
-
-      future_obs=matrix(NA,nrow = horizon,ncol=fit$K)
-
-
-    }else{
-
-      future_obs=matrix(NA,nrow = max(nrow(as.matrix(cond_path)),horizon),ncol=fit$K)
-
-    }
-
-    for (i in 1:length(cond_var)) {
-
-      future_obs[1:nrow(as.matrix(cond_path)),cond_var[i]]=as.matrix(cond_path)[,i]
-
-    }
-
-    colnames(future_obs)=colnames(fit$y)
-
-    yfin=rbind(fit$y,future_obs)
-
-
-    res=FKF::fkf(a0 = as.numeric(a0),
-                 P0 =  P0,
-                 dt =dt,
-                 ct = ct,
-                 Tt = Tt,
-                 Zt = Zt,
-                 HHt = HHt,
-                 GGt = GGt,
-                 yt = t(yfin))
-
-
-    fct=round(utils::tail(t(res$att)[,1:fit$K],horizon),7)
-
-    mse=res$Ptt[1:fit$K,1:fit$K,(dim(res$Ptt)[3]-horizon+1):dim(res$Ptt)[3]]
-
-
+    return(list(
+      forecast = forecast,
+      mse = mse,
+      fkf = fks_res,
+      ss = list(a0 = as.numeric(a0), P0 = P0, dt = dt, ct = ct,
+                Tt = Tt, Zt = Zt, HHt = HHt, GGt = GGt)
+    ))
   }
 
-
-  return(list(forecast=fct,mse=mse,fkf=res))
-
-
+  stop("`fit` must be of class 'varest'. Support for 'bvar' not yet implemented.")
 }

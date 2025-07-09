@@ -7,16 +7,16 @@
 cforecast(fit, cond_path, cond_var, horizon = NULL)
 }
 \arguments{
-\item{fit}{An object of class 'varest' or bvar}
+\item{fit}{An object of class 'varest' or 'bvar'}
 
-\item{cond_path}{A vector or a matrix with conditional path}
+\item{cond_path}{A vector or matrix specifying the conditional path}
 
-\item{cond_var}{A vector with constrained columns in y}
+\item{cond_var}{A vector indicating which columns of \code{y} are conditionally constrained}
 
-\item{horizon}{forecast horizon}
+\item{horizon}{Forecast horizon. If NULL, the number of rows in \code{cond_path} is used}
 }
 \value{
-A list with forecasts and the associated MSE
+A list with the forecast, the forecast MSE, and supporting Kalman state space objects
 }
 \description{
 Computes conditional forecasts using the methods proposed by Clarida and Coyle (1984) and Banbura et al. (2015).
@@ -24,5 +24,5 @@ Computes conditional forecasts using the methods proposed by Clarida and Coyle (
 \references{
 Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
 
-Bańbura, M., Giannone, D. and M. Lenza (2015) . Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections. International Journal of forecasting, 31(3), pp.739-756.
+Bańbura, M., Giannone, D. and M. Lenza (2015). Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections. International Journal of Forecasting, 31(3), 739–756.
 }
