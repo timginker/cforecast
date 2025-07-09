@@ -7,6 +7,7 @@ Authors@R:
            family = "Ginker",
            role = c("aut", "cre"),
            email = "tim.ginker@example.com")
+Maintainer: Tim Ginker <tim.ginker@gmail.com> 
 Description: 
     Provides tools for conducting conditional forecasts and scenario analysis 
     using vector autoregressive (VAR) models. Implements the Kalman filtering 

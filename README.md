@@ -41,7 +41,6 @@ std_dev <- sqrt(conditional_forecast$mse[1, 1, ])
 horizon <- length(forecast)
 time <- seq_len(horizon)
 
-# Construct data frame
 df <- data.frame(
   Time = time,
   Forecast = forecast,
