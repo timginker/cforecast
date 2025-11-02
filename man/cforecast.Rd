@@ -2,27 +2,43 @@
 % Please edit documentation in R/cforecast.R
 \name{cforecast}
 \alias{cforecast}
-\title{Conditional Forecast with VAR}
+\title{Conditional Forecast with VAR or BVAR}
 \usage{
-cforecast(fit, cond_path, cond_var, horizon = NULL)
+cforecast(fit, cond_path, cond_var, horizon = NULL, p0 = 10000)
 }
 \arguments{
-\item{fit}{An object of class 'varest' or 'bvar'}
+\item{fit}{An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})}
 
-\item{cond_path}{A vector or matrix specifying the conditional path}
+\item{cond_path}{A numeric vector or matrix specifying the conditional path for the constrained variables}
 
-\item{cond_var}{A vector indicating which columns of `y` are conditionally constrained}
+\item{cond_var}{A numeric vector indicating which columns of \code{y} are conditionally constrained}
 
-\item{horizon}{Forecast horizon. If NULL, the number of rows in `cond_path` is used}
+\item{horizon}{Optional forecast horizon (number of periods ahead). If \code{NULL}, it is inferred
+from the number of rows in \code{cond_path}}
+
+\item{p0}{Diagonal element of the initial state covariance matrix. Default is \code{1e4}}
 }
 \value{
-A list with the forecast, the forecast MSE, and supporting Kalman state space objects
+A list with:
+\itemize{
+  \item \code{forecast} — Conditional forecast matrix (horizon × variables)
+  \item \code{mse} — Forecast mean squared error (array: K × K × horizon)
+  \item \code{fkf} — Output of the Kalman smoother (\code{FKF::fks})
+  \item \code{ss} — State space representation used in the forecast
+  \item \code{cond_var} — Indices of constrained variables
+  \item \code{cond_path} — The conditional path used
+  \item \code{horizon} — Effective forecast horizon
+  \item \code{fit} — The fitted VAR/BVAR object
+  \item \code{y} — Full data matrix (historical + future with conditional constraints)
+}
 }
 \description{
-Computes conditional forecasts using the methods proposed by Clarida and Coyle (1984) and Banbura et al. (2015).
+Computes conditional forecasts using the Kalman filter and smoother methods proposed by
+Clarida and Coyle (1984) and Bańbura et al. (2015). Supports classical VAR models
+(\code{varest} from the \pkg{vars} package) and Bayesian VAR models
+(\code{bvar} from the \pkg{BVAR} package).
 }
 \examples{
-# Exploring an increase in the unemployment rate (U)
 library(vars)
 data(Canada)
 fit <- VAR(Canada, p = 2, type = "const")
@@ -36,6 +52,9 @@ print(conditional_forecast$forecast)
 }
 \references{
 Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
+  Carnegie-Rochester Conference Series on Public Policy, 20, 247–284.
 
-Bańbura, M., Giannone, D. and M. Lenza (2015). Conditional forecasts and scenario analysis with vector autoregressions for large cross-sections. International Journal of Forecasting, 31(3), 739–756.
+Bańbura, M., Giannone, D., & Lenza, M. (2015). Conditional forecasts and scenario analysis
+  with vector autoregressions for large cross-sections. \emph{International Journal of Forecasting},
+  31(3), 739–756.
 }
