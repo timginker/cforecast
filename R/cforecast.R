@@ -11,6 +11,8 @@
 #' @param horizon Optional forecast horizon (number of periods ahead). If \code{NULL}, it is inferred
 #'   from the number of rows in \code{cond_path}
 #' @param p0 Diagonal element of the initial state covariance matrix. Default is \code{1e4}
+#' @param BGL Logical. If \code{TRUE}, implements the method of Banbura et al. (2015). Defaults to \code{FALSE}
+#' @param quantiles Optional numeric vector. If BGL is \code{TRUE}, specifies the quantiles of the forecast distribution to compute. By default returns the median.
 #'
 #' @importFrom FKF fkf fks
 #' @importFrom utils tail
@@ -35,6 +37,7 @@
 #'   \item \code{horizon} — Effective forecast horizon
 #'   \item \code{fit} — The fitted VAR/BVAR object
 #'   \item \code{y} — Full data matrix (historical + future with conditional constraints)
+#'   \item \code{fct_BGL} — If BGL is \code{TRUE}, returns the forecast quantiles as specified by the \code{quantiles} argument.
 #' }
 #'
 #' @export
@@ -51,7 +54,13 @@
 #' conditional_forecast <- cforecast(fit = fit, cond_path = cond_path, cond_var = cond_var)
 #' print(conditional_forecast$forecast)
 
-cforecast <- function(fit, cond_path, cond_var, horizon = NULL, p0 = 1e4) {
+cforecast <- function(fit,
+                      cond_path,
+                      cond_var,
+                      horizon = NULL,
+                      p0 = 1e4,
+                      BGL = F ,
+                      quantiles = NULL) {
 
 
   if (!is.null(horizon) && (!is.numeric(horizon) || horizon < 1)) {
@@ -122,6 +131,102 @@ cforecast <- function(fit, cond_path, cond_var, horizon = NULL, p0 = 1e4) {
 
     }
 
+    # Implementing the method suggested by Banbura et al. (2015)
+    fct_BGL =NULL
+
+    if(BGL){
+      K <- fit[["meta"]][["M"]]
+      p <- fit[["meta"]][["lags"]]
+      n_state <- K * p
+      h <- if (is.null(horizon)) path_length else horizon
+
+      fct_arr = array(numeric(0), dim = c(fit$meta$n_save, h, K))
+
+      for (j in 1:fit$meta$n_save) {
+
+        companion_matrix <- matrix(0, nrow = n_state, ncol = n_state)
+        companion_matrix[1:K,] <- t(fit$beta[j,-1,])
+        companion_matrix[(K + 1):n_state, 1:(n_state - K)] <- diag(n_state - K)
+
+        # Augment system for constant
+        t1 <- cbind(companion_matrix, rbind(diag(K), matrix(0, ncol = K, nrow = K * (p - 1))))
+        t2 <- cbind(matrix(0, nrow = K, ncol = p * K), diag(K))
+        Tt <- rbind(t1, t2)
+
+        Zt <- matrix(0, nrow = K, ncol = n_state + K)
+        Zt[1:K, 1:K] <- diag(K)
+
+        GGt <- matrix(0, nrow = K, ncol = K)
+        ct  <- matrix(0, nrow = K, ncol = 1)
+
+        HHt <- matrix(0, nrow = n_state + K, ncol = n_state + K)
+        HHt[1:K, 1:K] <- fit$sigma[j,,]
+
+        dt <- matrix(0, nrow = n_state + K, ncol = 1)
+        a0 <- matrix(0, nrow = n_state + K, ncol = 1)
+        P0 <- diag(p0, nrow = n_state + K)
+
+        a0[(p * K + 1):(n_state + K), 1] <- fit$beta[j,1,]
+
+        cond_path = rep(0,5)
+        cond_var = 3
+
+
+        ss = list(
+          Tt = Tt,
+          Zt = Zt,
+          GGt = GGt,
+          HHt = HHt,
+          dt = dt,
+          ct = ct,
+          a0 = a0,
+          P0 = P0
+        )
+
+        ## Determine horizon and initialize future observations
+        cond_path <- as.matrix(cond_path)
+        path_length <- nrow(cond_path)
+        h <- if (is.null(horizon)) path_length else horizon
+        nrows <- max(h, path_length)
+
+        future_obs <- matrix(NA, nrow = nrows, ncol = K)
+        for (i in seq_along(cond_var)) {
+          future_obs[1:path_length, cond_var[i]] <- cond_path[, i]
+        }
+
+        colnames(future_obs) <- colnames(y_hist)
+        y_all <- rbind(y_hist, future_obs)
+
+        ## Run Kalman filter and smoother
+        fkf_res <- FKF::fkf(
+          a0 = as.numeric(ss$a0), P0 = ss$P0, dt = ss$dt, ct = ss$ct,
+          Tt = ss$Tt, Zt = ss$Zt, HHt = ss$HHt, GGt = ss$GGt, yt = t(y_all)
+        )
+        fks_res <- FKF::fks(fkf_res)
+
+        ## Extract forecast
+        forecast <- tail(t(ss$Zt%*%fks_res$ahatt),h)
+        fct_arr[j,,]=forecast
+
+
+      }
+
+      if(is.null(quantiles)){
+
+        fct_BGL <- apply(fct_arr, MARGIN = c(2, 3), FUN = median)
+      } else {
+
+        fct_BGL <- apply(fct_arr, c(2, 3), quantile, probs = quantiles)
+
+        fct_BGL <- round(fct_BGL,6)
+
+      }
+
+
+
+    }
+
+
     return(list(
       forecast = forecast,
       mse = mse,
@@ -132,7 +237,8 @@ cforecast <- function(fit, cond_path, cond_var, horizon = NULL, p0 = 1e4) {
       cond_path = cond_path,
       horizon = h,
       fit = fit,
-      y = y_all
+      y = y_all,
+      fct_BGL = fct_BGL
     ))
 
 

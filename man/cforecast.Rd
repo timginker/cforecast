@@ -4,7 +4,15 @@
 \alias{cforecast}
 \title{Conditional Forecast with VAR or BVAR}
 \usage{
-cforecast(fit, cond_path, cond_var, horizon = NULL, p0 = 10000)
+cforecast(
+  fit,
+  cond_path,
+  cond_var,
+  horizon = NULL,
+  p0 = 10000,
+  BGL = F,
+  quantiles = NULL
+)
 }
 \arguments{
 \item{fit}{An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})}
@@ -17,6 +25,10 @@ cforecast(fit, cond_path, cond_var, horizon = NULL, p0 = 10000)
 from the number of rows in \code{cond_path}}
 
 \item{p0}{Diagonal element of the initial state covariance matrix. Default is \code{1e4}}
+
+\item{BGL}{Logical. If \code{TRUE}, implements the method of Banbura et al. (2015). Defaults to \code{FALSE}}
+
+\item{quantiles}{Optional numeric vector. If BGL is \code{TRUE}, specifies the quantiles of the forecast distribution to compute. By default returns the median.}
 }
 \value{
 A list with:
@@ -30,6 +42,7 @@ A list with:
   \item \code{horizon} — Effective forecast horizon
   \item \code{fit} — The fitted VAR/BVAR object
   \item \code{y} — Full data matrix (historical + future with conditional constraints)
+  \item \code{fct_BGL} — If BGL is \code{TRUE}, returns the forecast quantiles as specified by the \code{quantiles} argument.
 }
 }
 \description{
