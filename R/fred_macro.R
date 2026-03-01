@@ -35,10 +35,8 @@
 #'   in percentage points.}
 #'
 #'   \item{DCOILWTICO}{Crude Oil Price (WTI). Spot price of West Texas
-#'   Intermediate (WTI) crude oil at Cushing, Oklahoma. Two representations
-#'   are provided: (i) quarterly average growth rate (quarter-to-quarter
-#'   percent change), and (ii) quarterly average level in U.S. dollars per
-#'   barrel.}
+#'   Intermediate (WTI) crude oil at Cushing, Oklahoma. Quarterly average growth rate (quarter-to-quarter
+#'   percent change).}
 #' }
 #'
 #' \strong{Date convention:}
