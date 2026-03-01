@@ -4,15 +4,7 @@
 \alias{cforecast}
 \title{Conditional Forecast with VAR or BVAR}
 \usage{
-cforecast(
-  fit,
-  cond_path,
-  cond_var,
-  horizon = NULL,
-  p0 = 10000,
-  BGL = F,
-  quantiles = NULL
-)
+cforecast(fit, cond_path, cond_var, horizon = NULL, p0 = 10000)
 }
 \arguments{
 \item{fit}{An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})}
@@ -25,10 +17,6 @@ cforecast(
 from the number of rows in \code{cond_path}}
 
 \item{p0}{Diagonal element of the initial state covariance matrix. Default is \code{1e4}}
-
-\item{BGL}{Logical. If \code{TRUE}, implements the method of Banbura et al. (2015). Defaults to \code{FALSE}}
-
-\item{quantiles}{Optional numeric vector. If BGL is \code{TRUE}, specifies the quantiles of the forecast distribution to compute. By default returns the median.}
 }
 \value{
 A list with:
@@ -42,14 +30,14 @@ A list with:
   \item \code{horizon} — Effective forecast horizon
   \item \code{fit} — The fitted VAR/BVAR object
   \item \code{y} — Full data matrix (historical + future with conditional constraints)
-  \item \code{fct_BGL} — If BGL is \code{TRUE}, returns the forecast quantiles as specified by the \code{quantiles} argument.
 }
 }
 \description{
 Computes conditional forecasts using the Kalman filter and smoother methods proposed by
 Clarida and Coyle (1984) and Bańbura et al. (2015). Supports classical VAR models
-(\code{varest} from the \pkg{vars} package) and Bayesian VAR models
-(\code{bvar} from the \pkg{BVAR} package).
+(\code{varest} from the \pkg{vars} package). Future implementations will also include Bayesian VAR models
+(\code{bvar} from the \pkg{BVAR} package). For now, due to computational complexity, the function
+allows analysis of variable importance at the median of the distribution.
 }
 \examples{
 library(vars)
