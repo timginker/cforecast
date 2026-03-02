@@ -188,7 +188,7 @@ p_baa <- ggplot(df_plot, aes(x = date)) +
   )+
   labs(
     title = "Moody's Seasoned Baa Corporate Bond Yield Relative to \nYield on 10-Year Treasury Constant Maturity",
-    #subtitle = "History (solid) and scenario (dashed)",
+    caption = "Notes: The solid line shows historical data. The dashed line denotes the conditional \nforecast under the imposed scenario. The dotted line shows the unconditional (baseline) forecast.",
     x = NULL,
     y = "Percentage points"
   ) +
@@ -521,7 +521,7 @@ suppressWarnings(plt_fct_scenarios)
 
 ------------------------------------------------------------------------
 
-### Decomposing the Conditional Forecast into Variable-Specific Contributions
+## Decomposing the Conditional Forecast into Variable-Specific Contributions
 
 The composition of a conditional forecast can be obtained using
 `cforecast_composition()`. The function decomposes the scenario-induced
