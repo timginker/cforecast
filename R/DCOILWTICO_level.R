@@ -6,7 +6,7 @@
 #' @format A data frame with 161 observations and 2 variables:
 #' \describe{
 #'   \item{date}{Date of observation (class \code{Date})}
-#'   \item{DCOILWTICO_level}{Quarterly average oil price in U.S. dollars per barrel}
+#'   \item{DCOILWTICO}{Quarterly average oil price in U.S. dollars per barrel}
 #' }
 #' @source Federal Reserve Economic Data (FRED),
 #' Federal Reserve Bank of St. Louis.

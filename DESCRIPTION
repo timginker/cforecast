@@ -6,7 +6,7 @@ Authors@R:
     person(given = "Tim",
            family = "Ginker",
            role = c("aut", "cre"),
-           email = "tim.ginker@example.com")
+           email = "tim.ginker@gmail.com")
 Maintainer: Tim Ginker <tim.ginker@gmail.com> 
 Description: 
     Provides tools for conducting scenario analysis in reduced-form vector autoregressive (VAR) models. 
