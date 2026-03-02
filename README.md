@@ -76,10 +76,9 @@ compute a 20-quarter baseline (unconditional) forecast.
 ``` r
 suppressPackageStartupMessages({
 library(cforecast)
+library(tidyverse)
 library(vars)
-library(dplyr)
 library(lubridate)
-library(ggplot2)
 library(scales)
 library(patchwork)
 })
@@ -238,7 +237,7 @@ p_oil <- ggplot(df_plot_oil, aes(x = date)) +
   )+
   labs(
     title = "WTI Crude Oil Price",
-    #subtitle = "History (solid) and scenario (dashed)",
+    subtitle = "History (solid), baseline (dotted), and scenario (dashed)",
     x = NULL,
     y = "USD per barrel"
   ) +
@@ -270,9 +269,6 @@ suppressWarnings(combined_plot_scenarios)
 ```
 
 <img src="man/figures/README-unnamed-chunk-3-1.png" alt="" width="70%" />
-
-The object `cond_path` contains the multi-period conditioning trajectory
-supplied to the conditional forecasting procedure.
 
 ------------------------------------------------------------------------
 
@@ -421,6 +417,189 @@ an important distinction:
 The results emphasize the dominant role of the credit spread in shaping
 the conditional inflation forecast and the delayed, indirect influence
 of oil prices.
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+## Creating and Analyzing Conditional Forecasts
+
+After examining the dynamic relationships estimated by the VAR and their
+implications for scenario transmission, we proceed to generate a
+conditional forecast.
+
+Creating a conditional forecast requires:
+
+- A fitted VAR model  
+- A matrix containing the imposed future paths (`cond_path`)  
+- The indices of the constrained variables (`cond_var`)
+
+The code below illustrates the implementation:
+
+``` r
+# Construct conditioning matrix
+cond_path <- cbind(BAA10YM_future, DCOILWTICO_future)
+
+# Generate conditional forecast
+fct_constr <- cforecast(
+  fit,
+  cond_path = cond_path,
+  cond_var  = 4:5
+)
+```
+
+The object `fct_constr` contains the full conditional forecast,
+including the projected paths of all variables in the system consistent
+with the imposed scenario.
+
+The figure below illustrates the conditional forecast of core inflation
+under the assumed scenario. The imposed widening in the corporate credit
+spread generates a pronounced disinflationary impulse at short horizons.
+Within the reduced-form VAR, this shock is accompanied by an implied
+accommodative response of the policy rate.
+
+The contribution of oil prices increases gradually over the forecast
+horizon, reflecting the indirect transmission of energy-cost shocks to
+core inflation through production costs and aggregate demand. By
+contrast, the initial spike in the credit spread produces a sharp
+negative effect that subsequently stabilizes at a moderate level. This
+pattern is consistent with the scenario design, in which spreads revert
+toward a slightly higher plateau rather than continuing to widen.
+
+``` r
+# Build a plotting data set for core inflation with history and both forecasts
+df_plot_infl = data.frame(
+  date = dates_0,
+  y = c(df$PCEPILFE, rep(NA,length(BAA10YM_future))),
+  y_base = c(rep(NA,nrow(df)-1),
+             tail(df$PCEPILFE,1),pred_base$fcst$PCEPILFE[,1]),
+  y_fcst = c(rep(NA,nrow(df)-1),
+             tail(df$PCEPILFE,1),fct_constr$forecast[,2])
+)
+
+# Plot historical inflation and the conditional/unconditional forecasts
+plt_fct_scenarios <-ggplot(df_plot_infl, aes(x = date)) +
+  geom_line(aes(y = y), color = "black", linewidth = 0.8) +
+  geom_line(
+    aes(y = y_fcst),
+    color = "black",
+    linewidth = 0.7,
+    linetype = "dashed"
+  ) +
+  geom_line(
+    aes(y = y_base),
+    color = "black",
+    linewidth = 0.7,
+    linetype = "dotted"
+  ) +
+  labs(
+    title = "Core Inflation Forecasts (PCE Excluding Food and Energy)",
+    #subtitle = "Conditional and unconditional projections",
+    x = NULL,
+    y = "Percent, quarterly rate",
+    caption = "Notes: The solid line shows historical core PCE inflation. The dashed line denotes the conditional \nforecast under the imposed scenario. The dotted line shows the unconditional (baseline) forecast."
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(face = "bold", size = 11),
+    plot.subtitle = element_text(size = 10),
+    axis.text.y = element_text(size = 8),
+    axis.text.x = element_text(size = 9),
+    plot.caption = element_text(
+      hjust = 0,
+      size = 9,
+      color = "grey30"
+    )
+  )
+
+suppressWarnings(plt_fct_scenarios)
+```
+
+<img src="man/figures/README-unnamed-chunk-7-1.png" alt="" width="70%" />
+
+------------------------------------------------------------------------
+
+### Decomposing the Conditional Forecast into Variable-Specific Contributions
+
+The composition of a conditional forecast can be obtained using
+`cforecast_composition()`. The function decomposes the scenario-induced
+forecast revision for a chosen target variable into contributions from
+each conditioning variable.
+
+``` r
+fct_comp <- cforecast_composition(
+  fct_constr,
+  target_var = 2
+)
+```
+
+To visualize the decomposition across forecast horizons:
+
+``` r
+# Add explicit horizon index
+fct_comp$horizon <- 1:20
+
+# Reshape to long format
+df_long <- fct_comp %>%
+  pivot_longer(
+    cols      = -horizon,
+    names_to  = "variable",
+    values_to = "contribution"
+  )
+
+# Plot stacked contributions by horizon
+ggplot(
+  df_long,
+  aes(x = factor(horizon),
+      y = contribution,
+      fill = variable)
+) +
+  geom_col(width = 0.8) +
+  labs(
+    title = "Composition of the Conditional Forecast",
+    subtitle = "Contributions by variable and forecast horizon",
+    x = "Forecast horizon (quarters ahead)",
+    y = "Contribution to forecast",
+    fill = NULL
+  ) +
+  scale_fill_viridis_d(option = "cividis", end = 0.9) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title    = element_text(face = "bold", size = 11),
+    plot.subtitle = element_text(size = 10),
+    axis.title    = element_text(size = 11),
+    axis.text     = element_text(size = 10),
+    legend.position = "top",
+    legend.text     = element_text(size = 10),
+    legend.key.size = unit(0.35, "cm")
+  )
+```
+
+<img src="man/figures/README-unnamed-chunk-9-1.png" alt="" width="70%" />
+
+The decomposition clarifies the sources of the scenario-driven forecast
+revision. Although oil prices contribute visibly to the forecast
+composition, the variable-importance measures indicate that this effect
+is largely driven by the magnitude of the imposed oil-price path rather
+than by a strong model-implied sensitivity of core inflation to oil
+prices.
+
+This distinction is economically important.
+
+In scenarios that impose mechanically specified or stylized paths,
+variable-importance measures provide an *ex ante* indication of whether
+those assumptions are likely to materially affect the target forecast.
+More broadly, the decomposition helps discipline scenario design and
+interpretation by distinguishing between:
+
+- Effects arising from strong model-implied linkages, and  
+- Effects driven primarily by large imposed deviations.
+
+This directly informs policy communication. It identifies the pivotal
+elements of the narrative and highlights which imposed details are
+economically consequential for the variables of interest.
 
 ------------------------------------------------------------------------
 
