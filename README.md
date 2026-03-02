@@ -3,83 +3,426 @@
 
 # cforecast
 
-**cforecast** is an R package for conducting conditional forecasts and
-scenario analysis using vector autoregressive (VAR) models. It
-implements the Kalman filtering methodology proposed by Clarida and
-Coyle (1984) and Banbura, Giannone, and Lenza (2015), allowing users to
-simulate forecast paths under imposed constraints on future values of
-selected variables.
+**cforecast** is an R package for conditional forecasting and scenario
+analysis in vector autoregressive (VAR) models. It implements a Kalman
+filter–based framework for generating forecasts conditional on
+user-specified future paths of observable variables and provides tools
+for decomposing and interpreting scenario-driven forecast revisions.
+
+The example below replicates an empirical experiment from:
+
+> Caspi, I., & Ginker, T. (2026). *Conditional Forecasting with VARs:
+> Dynamic Influence, Variable Importance, and Forecast
+> Interpretation*.  
+> <https://doi.org/10.13140/RG.2.2.25225.51040>
+
+The illustration demonstrates the workflow for scenario design,
+conditional forecasting, and forecast attribution.
+
+------------------------------------------------------------------------
 
 ## Installation
 
-You can install the development version from GitHub using:
+Install the development version from GitHub:
 
 ``` r
 # install.packages("devtools")
 devtools::install_github("timginker/cforecast")
 ```
 
-## Example
+## Empirical Illustration: Conditional Inflation Forecasting under Financial and Energy Price Scenarios
+
+This section demonstrates how the conditional forecasting tools in
+`cforecast` can be used to:
+
+1.  Assess *ex ante* which conditioning assumptions are likely to
+    materially affect a target forecast.
+2.  Attribute *ex post* forecast revisions to specific elements of a
+    multi-period conditioning path.
+
+We consider a stylized policy scenario combining:
+
+- A tightening in financial conditions (corporate credit spreads), and  
+- A temporary oil price disruption.
+
+Such scenarios are typical in monetary policy and macro-financial
+stress-testing applications.
+
+------------------------------------------------------------------------
+
+We use U.S. quarterly macroeconomic data (1986Q2–2015Q4) from FRED.  
+The dataset includes the following series:
+
+- **GDPC1** — Real GDP  
+- **PCEPILFE** — Core PCE price index  
+- **FEDFUNDS** — Federal funds rate  
+- **BAA10YM** — Corporate credit spread (Moody’s Baa minus 10-year
+  Treasury)  
+- **DCOILWTICO** — WTI crude oil price
+
+The VAR includes five variables:
+
+1.  Real GDP growth  
+2.  Core PCE inflation  
+3.  Federal funds rate  
+4.  Corporate credit spread  
+5.  Oil price
+
+Below, we estimate a reduced-form VAR(2) with a constant term and
+compute a 20-quarter baseline (unconditional) forecast.
+
+------------------------------------------------------------------------
 
 ``` r
+suppressPackageStartupMessages({
 library(cforecast)
 library(vars)
+library(dplyr)
+library(lubridate)
 library(ggplot2)
+library(scales)
+library(patchwork)
+})
 
-# Load data and fit VAR model
-data(Canada)
-fit <- VAR(Canada, p = 2, type = "const")
+# Load packaged dataset
+data(fred_macro)
+data("DCOILWTICO_level")
 
-# Define a scenario: increase unemployment (4th variable) to 15 for 3 periods
-cond_path <- matrix(rep(15, 3), ncol = 1)
-cond_var <- 4
+# Restrict estimation sample
+df <- fred_macro %>%
+  filter(year(date) >= 1986,
+         year(date) <= 2015)
 
-# Generate conditional forecast
-conditional_forecast <- cforecast(fit = fit, cond_path = cond_path, cond_var = cond_var)
+# Estimate VAR(2)
+fit <- VAR(df[, -1], p = 2, type = "const")
 
-# Extract forecast and standard deviation
-forecast <- conditional_forecast$forecast[, 1]
-std_dev <- sqrt(conditional_forecast$mse[1, 1, ])
-horizon <- length(forecast)
-time <- seq_len(horizon)
-
-df <- data.frame(
-  Time = time,
-  Forecast = forecast,
-  Lower = forecast - 1.645 * std_dev,
-  Upper = forecast + 1.645 * std_dev,
-  Series = "Forecast"
-)
-
-# Plot
-ggplot(df, aes(x = Time, y = Forecast)) +
-  geom_ribbon(aes(ymin = Lower, ymax = Upper), fill = "grey70", alpha = 0.4) +
-  geom_line(color = "black", linewidth = 0.6) +
-  labs(
-    x = "Horizon",
-    y = "Forecasted Value",
-    title = "Conditional Forecast with 90% Confidence Interval"
-  ) +
-  theme_minimal(base_size = 12, base_family = "serif") +
-  theme(
-    legend.position = "none",
-    axis.title = element_text(face = "bold"),
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank()
-  )
+# Baseline forecast
+pred_base <- predict(fit, n.ahead = 20)
 ```
 
-<img src="man/figures/README-unnamed-chunk-2-1.png" width="100%" />
+------------------------------------------------------------------------
 
-## References
+## Scenario Design
 
-- Clarida, R., & Coyle, D. (1984). *Conditional Projection by Means of
-  Kalman Filtering*.
-- Banbura, M., Giannone, D., & Lenza, M. (2015). *Conditional forecasts
-  and scenario analysis with vector autoregressions for large
-  cross-sections*. *International Journal of Forecasting*, 31(3),
-  739–756.
+We construct a two-variable conditioning path affecting:
+
+- The corporate credit spread (BAA10YM)  
+- The oil price (DCOILWTICO)
+
+The scenario is designed as follows:
+
+- **Credit spreads** increase by 200 basis points for three quarters and
+  then gradually decay back toward baseline.
+- **Oil prices** initially surge and then revert gradually.
+
+This structure mimics a temporary macro-financial stress episode with
+persistent but fading effects.
+
+The following plot creates the scenario and plots it:
+
+``` r
+# Slicing Oil data
+DCOILWTICO_level %>% 
+  mutate(date = as.Date(date)) %>% 
+  dplyr::filter(year(date) >= 1986, year(date) <= 2015) %>% 
+  slice(-1) -> DCOILWTICO_level
+
+# Baseline path for oil prices (reconstructed in levels)
+pred_base <- predict(fit, n.ahead = 20)
+oil_base <- rep(NA, 20)
+oil_base[1] <- tail(DCOILWTICO_level$DCOILWTICO, 1) *
+  (1 + pred_base$fcst$DCOILWTICO[1, 1] / 100)
+
+for (i in 2:20) {
+  oil_base[i] <- oil_base[i - 1] *
+    (1 + pred_base$fcst$DCOILWTICO[i, 1] / 100)
+}
+
+# Imposed scenario paths for credit spreads and oil prices
+delta <- 0.7
+BAA10YM_future <- c(
+  rep(tail(df$BAA10YM, 1) + 2, 3),
+  (tail(df$BAA10YM, 1) + 2 * delta^(1:17))
+)
+
+DCOILWTICO_future <- c(
+  tail(DCOILWTICO_level$DCOILWTICO, 1) * (1.155061^(1:4)),
+  tail(DCOILWTICO_level$DCOILWTICO, 1) + 33.06 * delta^(1:16)
+)
+
+# Extended date vector covering the forecast horizon
+dates_0 <- fred_macro$date[1:(nrow(df) + 20)]
+
+# Construct plotting data for the credit-spread scenario input:
+#   - y: historical series (in-sample)
+#   - y_base: baseline (unconditional) VAR forecast appended after the sample end
+#   - y_fcst: imposed scenario path appended after the sample end
+# Missing values are used to prevent ggplot from drawing lines outside the
+# intended segments (history vs forecast).
+
+df_plot <- data.frame(
+  date = dates_0,
+  y = c(df$BAA10YM, rep(NA,length(BAA10YM_future))),
+  y_base = c(rep(NA,nrow(df)-1),
+             tail(df$BAA10YM,1),pred_base$fcst$BAA10YM[,1]),
+  y_fcst = c(rep(NA,nrow(df)-1),
+             tail(df$BAA10YM,1),BAA10YM_future)
+)
+
+# Plot the credit-spread path:
+# Solid line: historical data
+# Dashed line: imposed scenario path used for conditioning
+# Dotted line: baseline path implied by the VAR
+p_baa <- ggplot(df_plot, aes(x = date)) +
+  geom_line(aes(y = y), color = "black", linewidth = 0.8) +
+  geom_line(
+    aes(y = y_fcst),
+    color = "black",
+    linewidth = 0.7,
+    linetype = "dashed"
+  ) +
+  geom_line(
+    aes(y = y_base),
+    color = "black",
+    linewidth = 0.7,
+    linetype = "dotted"
+  )+
+  labs(
+    title = "Moody's Seasoned Baa Corporate Bond Yield Relative to \nYield on 10-Year Treasury Constant Maturity",
+    #subtitle = "History (solid) and scenario (dashed)",
+    x = NULL,
+    y = "Percentage points"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(size = 12),
+    axis.text.y = element_text(size = 8)
+    #plot.title = element_text(face = "bold")
+  )
+
+
+# Construct plotting data for the oil price scenario input (in levels):
+#   - y: historical oil price (levels series)
+#   - y_fcst: imposed scenario oil price path in levels
+#   - y_base: baseline oil price path reconstructed from VAR forecasts
+# As above, NA padding separates the historical segment from forecast segments.
+
+df_plot_oil <- data.frame(
+  date = dates_0,
+  y = c(DCOILWTICO_level$DCOILWTICO, rep(NA,length(DCOILWTICO_future))),
+  y_fcst = c(rep(NA,nrow(df)-1), 
+             tail(DCOILWTICO_level$DCOILWTICO,1),DCOILWTICO_future),
+  y_base = c(rep(NA,nrow(df)-1), 
+             tail(DCOILWTICO_level$DCOILWTICO,1),oil_base)
+)
+
+# Plot the oil price path:
+# Solid line: historical data
+# Dashed line: imposed scenario path used for conditioning
+# Dotted line: baseline path implied by the VAR (in levels)
+p_oil <- ggplot(df_plot_oil, aes(x = date)) +
+  geom_line(aes(y = y), color = "black", linewidth = 0.8) +
+  geom_line(
+    aes(y = y_fcst),
+    color = "black",
+    linewidth = 0.7,
+    linetype = "dashed"
+  ) +
+  geom_line(
+    aes(y = y_base),
+    color = "black",
+    linewidth = 0.7,
+    linetype = "dotted"
+  )+
+  labs(
+    title = "WTI Crude Oil Price",
+    #subtitle = "History (solid) and scenario (dashed)",
+    x = NULL,
+    y = "USD per barrel"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.title = element_text(size = 12),
+    axis.text.y = element_text(size = 8)
+  )
+
+
+# Align x-axis limits across the two panels to ensure consistent time coverage
+# and facilitate direct visual comparison of the two conditioning paths.
+x_rng <- range(c(df_plot_oil$date, df_plot$date), na.rm = TRUE)
+
+# Combine the two scenario-input panels into a single figure:
+# Oil price on top; credit spread below. X-axis annotations are removed from
+# the top panel to avoid duplication and improve readability.
+combined_plot_scenarios <-
+  (p_oil + scale_x_date(limits = x_rng) +
+     theme(axis.title.x = element_blank(),
+           axis.text.x  = element_blank(),
+           axis.ticks.x = element_blank())) /
+  (p_baa + scale_x_date(limits = x_rng))
+
+
+suppressWarnings(combined_plot_scenarios)
+```
+
+<img src="man/figures/README-unnamed-chunk-3-1.png" alt="" width="70%" />
+
+The object `cond_path` contains the multi-period conditioning trajectory
+supplied to the conditional forecasting procedure.
+
+------------------------------------------------------------------------
+
+## Interpreting Variable Importance
+
+We begin by examining overall variable importance in the conditional
+forecast of core inflation. These measures are computed *ex ante*, given
+the conditioning design: the future paths of the corporate credit spread
+(Moody’s Baa–10Y Treasury spread) and WTI crude oil prices are
+constrained, while the remaining variables are left unconstrained.
+
+The decomposition therefore quantifies the relative contribution of:
+
+1.  The imposed conditioning paths, and  
+2.  Historical information embedded in the data.
+
+Importantly, this assessment does not require realized future values.
+
+The plot below reports the overall variable importance:
+
+``` r
+v_imp=variable_importance_stat(fit=fit,
+                               cond_var = 4:5,
+                               target_var = 2,
+                               horizon = 20)
+
+# Visualize variable importance as stacked shares by horizon (normalized to 100%)
+plt = ggplot(v_imp$variable_importance,
+             aes(x = factor(horizon),
+                 y = share,
+                 fill = variable)) +
+  geom_col(position = "fill", width = 0.75, color = "white", linewidth = 0.2) +
+  scale_y_continuous(
+    labels = percent_format(accuracy = 1),
+    expand = expansion(mult = c(0, 0.02))
+  ) +
+  scale_fill_viridis_d(option = "cividis", end = 0.9) +
+  labs(
+    title = "Decomposition of Conditional Core Inflation Forecast",
+    subtitle = "Overall variable importance by forecast horizon",
+    x = "Forecast horizon (quarters ahead)",
+    y = "Share of information (percent)",
+    fill = NULL
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 11),
+    plot.subtitle = element_text(size = 10),
+    axis.title = element_text(size = 11),
+    axis.text  = element_text(size = 10),
+    legend.position = "top",
+    legend.text = element_text(size = 10),
+    legend.key.size = unit(0.35, "cm"),
+    axis.line = element_line(linewidth = 0.3),
+    axis.ticks = element_line(linewidth = 0.3)
+  )
+
+plt 
+```
+
+<img src="man/figures/README-unnamed-chunk-4-1.png" alt="" width="70%" />
+
+The results indicate that the importance of the credit spread increases
+steadily with the forecast horizon. This pattern suggests that financial
+conditions—particularly corporate credit risk—play an increasingly
+prominent role in shaping medium-term inflation dynamics. This finding
+is consistent with evidence that credit spreads contain predictive
+information for demand-side pressures (e.g., Lopez-Salido et al., 2017;
+Caldara and Herbst, 2019).
+
+By contrast, oil prices contribute more modestly to the core inflation
+forecast. Their importance rises slightly at longer horizons—an
+intuitive result given that core inflation excludes energy components
+and oil affects inflation only indirectly through production costs and
+aggregate demand.
+
+The federal funds rate, although unconstrained in the scenario,
+contributes through its historical values. Its importance peaks at a lag
+of roughly five quarters, consistent with standard estimates of monetary
+policy transmission (e.g., Christiano et al., 1996).
+
+Finally, GDP growth receives minimal weight in the decomposition. This
+reflects its weak marginal signal once financial and commodity variables
+are accounted for and aligns with evidence that real activity indicators
+offer limited incremental predictive content for inflation (Stock and
+Watson, 2007).
+
+------------------------------------------------------------------------
+
+## Marginal Variable Importance
+
+The plot below reports the marginal importance:
+
+``` r
+
+plt_mimp = ggplot(subset(v_imp$marginal_variable_importance,share!=0),
+             aes(x = factor(horizon),
+                 y = share,
+                 fill = variable)) +
+  geom_col(position = "fill", width = 0.75, color = "white", linewidth = 0.2) +
+  scale_y_continuous(
+    labels = percent_format(accuracy = 1),
+    expand = expansion(mult = c(0, 0.02))
+  ) +
+  scale_fill_viridis_d(option = "cividis", end = 0.9) +
+  labs(
+    title = "Decomposition of Conditional Core Inflation Forecast",
+    subtitle = "Marginal variable importance by forecast horizon",
+    x = "Forecast horizon (quarters ahead)",
+    y = "Share of information (percent)",
+    fill = NULL
+  ) +
+  theme_classic(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 11),
+    plot.subtitle = element_text(size = 10),
+    axis.title = element_text(size = 11),
+    axis.text  = element_text(size = 10),
+    legend.position = "top",
+    legend.text = element_text(size = 10),
+    legend.key.size = unit(0.35, "cm"),
+    axis.line = element_line(linewidth = 0.3),
+    axis.ticks = element_line(linewidth = 0.3)
+  )
+
+
+plt_mimp
+```
+
+<img src="man/figures/README-unnamed-chunk-5-1.png" alt="" width="70%" />
+
+Marginal variable importance isolates the contribution of the imposed
+future constraints. The decomposition is dominated by the corporate
+credit spread, while oil prices gain importance gradually at longer
+horizons due to their indirect and lagged transmission to core
+inflation.
+
+Taken together, the overall and marginal importance measures highlight
+an important distinction:
+
+- **Overall importance** reflects both historical information and
+  imposed paths.  
+- **Marginal importance** isolates the incremental role of future
+  constraints.
+
+The results emphasize the dominant role of the credit spread in shaping
+the conditional inflation forecast and the delayed, indirect influence
+of oil prices.
+
+------------------------------------------------------------------------
 
 # Disclaimer
 
