@@ -188,7 +188,7 @@ p_baa <- ggplot(df_plot, aes(x = date)) +
   )+
   labs(
     title = "Moody's Seasoned Baa Corporate Bond Yield Relative to \nYield on 10-Year Treasury Constant Maturity",
-    caption = "Notes: The solid line shows historical data. The dashed line denotes the conditional \nforecast under the imposed scenario. The dotted line shows the unconditional (baseline) forecast.",
+    #caption = "Notes: The solid line shows historical data. The dashed line denotes the conditional \nforecast under the imposed scenario. The dotted line shows the unconditional (baseline) forecast.",
     x = NULL,
     y = "Percentage points"
   ) +
