@@ -34,7 +34,8 @@ data(Canada)
 
 # Classical VAR
 fit <- VAR(Canada, p = 2, type = "const")
-# conditioning on U, target variable is prod, horizon is set to 1 to speed up the computation
+# conditioning on U, target variable is prod,
+# horizon is set to 1 to speed up the computation
 vim <- variable_importance_level(fit = fit, cond_var = 4, target_var = 2, horizon = 1)
 
 }

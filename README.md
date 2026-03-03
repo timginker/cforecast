@@ -16,8 +16,7 @@ for policy analysis, stress testing, and macro-financial applications.
 The example below replicates an empirical experiment from:
 
 > Caspi, I., & Ginker, T. (2026). *What Drives the Scenario?
-> Interpreting Conditional Forecasts in Reduced-Form VARs*.  
-> <https://doi.org/10.13140/RG.2.2.25225.51040>
+> Interpreting Conditional Forecasts in Reduced-Form VARs*.
 
 The illustration demonstrates the workflow for scenario design,
 conditional forecasting, and forecast attribution.
