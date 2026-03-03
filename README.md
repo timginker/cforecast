@@ -11,9 +11,8 @@ for decomposing and interpreting scenario-driven forecast revisions.
 
 The example below replicates an empirical experiment from:
 
-> Caspi, I., & Ginker, T. (2026). *Conditional Forecasting with VARs:
-> Dynamic Influence, Variable Importance, and Forecast
-> Interpretation*.  
+> Caspi, I., & Ginker, T. (2026). *What Drives the Scenario?
+> Interpreting Conditional Forecasts in Reduced-Form VARs*.  
 > <https://doi.org/10.13140/RG.2.2.25225.51040>
 
 The illustration demonstrates the workflow for scenario design,
