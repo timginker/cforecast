@@ -16,7 +16,8 @@ knitr::opts_chunk$set(
 
 # cforecast
 
-**cforecast** is an R package for conditional forecasting and scenario analysis in vector autoregressive (VAR) models. It implements a Kalman filter–based framework for generating forecasts conditional on user-specified future paths of observable variables and provides tools for decomposing and interpreting scenario-driven forecast revisions.
+**cforecast** is an R package that provides tools for conducting scenario analysis in reduced-form vector autoregressive (VAR) models. It implements a Kalman filtering framework to generate forecasts under path restrictions on selected variables. The package enables decomposition of conditional forecasts into variable-specific contributions and extraction of observation weights. It also computes measures of overall and marginal variable importance to enhance the economic interpretation of forecast revisions. The framework is structurally agnostic and suited for policy analysis, stress testing, and macro-financial applications.
+
 
 The example below replicates an empirical experiment from:
 
