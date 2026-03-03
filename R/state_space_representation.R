@@ -1,7 +1,9 @@
 #' State Space Representation
 #'
 #' Constructs the state space representation of a VAR model. Compatible with both
-#' classical VAR models (from the \pkg{vars} package) and Bayesian VAR models (from the \pkg{BVAR} package).
+#' classical VAR models (from the \pkg{vars} package) and Bayesian VAR models
+#' (from the \pkg{BVAR} package) for which the state space representation is computed
+#' at the median of the parameter distribution.
 #'
 #' @param fit An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})
 #' @param p0 diagonal element of the initial state covariance, with default of 1e4

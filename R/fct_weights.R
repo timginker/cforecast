@@ -14,6 +14,17 @@
 #' @return A list of weight matrices for each horizon step
 #' @export
 #'
+#' @examples
+#'
+#' library(cforecast)
+#' library(vars)
+#' data(fred_macro)
+#' # Fit a  VAR model
+#' fit <- VAR(fred_macro[,-1], p = 2, type = "const")
+#' # compute observation weights for PCEPILFE given the conditioning on DCOILWTICO
+#' fct_weights_fm <- fct_weights(fit = fit, cond_var = 5, target_var = 2, horizon = 1)
+#' # note that only DCOILWTICO's weight is nonzero for h=1
+#'
 fct_weights <- function(fit, cond_var, target_var, horizon, p0 = 1e4) {
 
 

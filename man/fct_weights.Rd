@@ -24,3 +24,15 @@ A list of weight matrices for each horizon step
 Computes observation weights used in the Kalman smoother for a given target variable,
 showing the relative contribution of observed variables to the conditional forecast.
 }
+\examples{
+
+library(cforecast)
+library(vars)
+data(fred_macro)
+# Fit a  VAR model
+fit <- VAR(fred_macro[,-1], p = 2, type = "const")
+# compute observation weights for PCEPILFE given the conditioning on DCOILWTICO
+fct_weights_fm <- fct_weights(fit = fit, cond_var = 5, target_var = 2, horizon = 1)
+# note that only DCOILWTICO's weight is nonzero for h=1
+
+}

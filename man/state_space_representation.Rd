@@ -25,7 +25,9 @@ A list containing the state space system matrices:
 }
 \description{
 Constructs the state space representation of a VAR model. Compatible with both
-classical VAR models (from the \pkg{vars} package) and Bayesian VAR models (from the \pkg{BVAR} package).
+classical VAR models (from the \pkg{vars} package) and Bayesian VAR models
+(from the \pkg{BVAR} package) for which the state space representation is computed
+at the median of the parameter distribution.
 }
 \examples{
 library(vars)

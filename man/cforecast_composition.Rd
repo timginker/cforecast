@@ -17,3 +17,17 @@ a data.frame with the decomposition
 \description{
 Compute Conditional Forecast Composition
 }
+\examples{
+library(cforecast)
+library(vars)
+data(fred_macro)
+# Fit a  VAR model
+fit <- VAR(fred_macro[,-1], p = 2, type = "const")
+# compute a conditional forecast given no change in the oil price DCOILWTICO in the next period
+cond_path = 0
+fct_constr <- cforecast(fit, cond_path = cond_path, cond_var = 5)
+# compute forecast composition for PCEPILFE
+infl_composition <- cforecast_composition(fct_constr, target_var =2)
+
+
+}
