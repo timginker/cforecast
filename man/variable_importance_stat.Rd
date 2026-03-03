@@ -25,5 +25,17 @@ A list containing two data frames:
 \description{
 Computes the relative importance of each variable in a conditional forecast
 from a stationary VAR model. Supports both classical VAR models (from the
-\pkg{vars} package) and Bayesian VAR models (from the \pkg{BVAR} package).
+\pkg{vars} package) and Bayesian VAR models (from the \pkg{BVAR} package) for which
+the computation is performed at the median of the parameter distribution.
+}
+\examples{
+library(cforecast)
+library(vars)
+data(fred_macro)
+# Fit a  VAR model
+fit <- VAR(fred_macro[,-1], p = 2, type = "const")
+# conditioning on the oil price, target variable is core inflation, horizon is set to 1 to speed up the computation
+vim <- variable_importance_stat(fit = fit, cond_var = 5, target_var = 2, horizon = 1)
+
+
 }

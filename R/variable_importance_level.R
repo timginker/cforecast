@@ -26,6 +26,16 @@
 #'
 #' @export
 #'
+#' @examples
+#'
+#' library(vars)
+#' data(Canada)
+#'
+#' # Classical VAR
+#' fit <- VAR(Canada, p = 2, type = "const")
+#' # conditioning on U, target variable is prod, horizon is set to 1 to speed up the computation
+#' vim <- variable_importance_level(fit = fit, cond_var = 4, target_var = 2, horizon = 1)
+#'
 variable_importance_level <- function(fit, cond_var, target_var, horizon){
 
 

@@ -27,3 +27,14 @@ Computes the relative importance of each variable in a conditional forecast from
 taking into account both scale (levels) and variance. Supports both classical VAR models
 (from the \pkg{vars} package) and Bayesian VAR models (from the \pkg{BVAR} package).
 }
+\examples{
+
+library(vars)
+data(Canada)
+
+# Classical VAR
+fit <- VAR(Canada, p = 2, type = "const")
+# conditioning on U, target variable is prod, horizon is set to 1 to speed up the computation
+vim <- variable_importance_level(fit = fit, cond_var = 4, target_var = 2, horizon = 1)
+
+}
