@@ -25,7 +25,6 @@ Imports:
     dplyr,
     FKF,
     miscTools,
-    seasonal,
     tibble,
     forecast,
     vars,
