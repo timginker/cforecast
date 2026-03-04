@@ -26,7 +26,6 @@ Imports:
     FKF,
     miscTools,
     tibble,
-    forecast,
     vars,
     utils,
     methods,
