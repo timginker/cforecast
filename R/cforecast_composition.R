@@ -21,12 +21,17 @@
 #'
 cforecast_composition <- function(x,target_var){
 
+
+  # check which backend is used
+  package = ifelse(class(x$fkf)=="fks","FKF","KFAS")
+
   # Compute forecast variable weights
 
   forecast_weights <- fct_weights(x$fit,
                                   cond_var = x$cond_var,
                                   target_var = target_var,
-                                  horizon = x$horizon)
+                                  horizon = x$horizon,
+                                  package = package)
 
   # Compute decomposition
 
