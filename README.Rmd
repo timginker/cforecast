@@ -18,6 +18,10 @@ knitr::opts_chunk$set(
 
 **cforecast** is an R package that provides tools for conducting scenario analysis in reduced-form vector autoregressive (VAR) models. It implements a Kalman filtering framework to generate forecasts under path restrictions on selected variables. The package enables decomposition of conditional forecasts into variable-specific contributions and extraction of observation weights. It also computes measures of overall and marginal variable importance to enhance the economic interpretation of forecast revisions. The framework is structurally agnostic and suited for policy analysis, stress testing, and macro-financial applications.
 
+## Important note! Development Version: KFAS Backend
+
+The current development version introduces support for the `KFAS` backend for state-space filtering and smoothing routines. The backend can be selected using the `package` argument (`package = "KFAS"`). This backend is particularly useful in situations where the forecast error variance matrix is singular or near-singular, for which the default `FKF` implementation may fail. Note that the `KFAS` backend is computationally more expensive and may result in longer execution times compared to `FKF`.
+
 
 The example below replicates an empirical experiment from:
 

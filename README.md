@@ -13,6 +13,17 @@ and marginal variable importance to enhance the economic interpretation
 of forecast revisions. The framework is structurally agnostic and suited
 for policy analysis, stress testing, and macro-financial applications.
 
+## Important note! Development Version: KFAS Backend
+
+The current development version introduces support for the `KFAS`
+backend for state-space filtering and smoothing routines. The backend
+can be selected using the `package` argument (`package = "KFAS"`). This
+backend is particularly useful in situations where the forecast error
+variance matrix is singular or near-singular, for which the default
+`FKF` implementation may fail. Note that the `KFAS` backend is
+computationally more expensive and may result in longer execution times
+compared to `FKF`.
+
 The example below replicates an empirical experiment from:
 
 > Caspi, I., & Ginker, T. (2026). *What Drives the Scenario?
