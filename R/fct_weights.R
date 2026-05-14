@@ -8,6 +8,10 @@
 #' @param target_var Column index of the target variable being forecast
 #' @param horizon Forecast horizon (number of future periods)
 #' @param p0 diagonal element of the initial state covariance, with default of 1e4
+#' @param package A character string indicating which backend to use
+#'   (\code{"FKF"} or \code{"KFAS"}). Defaults to \code{"FKF"}.
+#'   The \code{"KFAS"} backend can be useful when the forecast error
+#'   variance matrix is singular or near-singular.
 #'
 #' @importFrom wex wex
 #'
@@ -25,7 +29,7 @@
 #' fct_weights_fm <- fct_weights(fit = fit, cond_var = 5, target_var = 2, horizon = 1)
 #' # note that only DCOILWTICO's weight is nonzero for h=1
 #'
-fct_weights <- function(fit, cond_var, target_var, horizon, p0 = 1e4) {
+fct_weights <- function(fit, cond_var, target_var, horizon, p0 = 1e4,package = "FKF") {
 
 
   if (!is.numeric(horizon) || length(horizon) != 1 || horizon < 1) {
@@ -68,7 +72,8 @@ fct_weights <- function(fit, cond_var, target_var, horizon, p0 = 1e4) {
      # a0  = as.vector(ss$a0),
       P0  = ss$P0,
       yt  = t(y),
-      t   = idx
+      t   = idx,
+     package = package
     )
 
     sweights <- as.data.frame(t(w_k$WtT[target_var, , ]))
