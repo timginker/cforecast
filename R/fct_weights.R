@@ -69,7 +69,6 @@ fct_weights <- function(fit, cond_var, target_var, horizon, p0 = 1e4,package = "
       Zt  = ss$Zt,
       HHt = ss$HHt,
       GGt = ss$GGt,
-     # a0  = as.vector(ss$a0),
       P0  = ss$P0,
       yt  = t(y),
       t   = idx,
