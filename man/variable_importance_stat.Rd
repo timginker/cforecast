@@ -31,7 +31,7 @@ A list containing two data frames:
 Computes the relative importance of each variable in a conditional forecast
 from a stationary VAR model. Supports both classical VAR models (from the
 \pkg{vars} package) and Bayesian VAR models (from the \pkg{BVAR} package) for which
-the computation is performed at the median of the parameter distribution.
+the computation is performed at the median of the posterior distribution.
 }
 \examples{
 library(cforecast)

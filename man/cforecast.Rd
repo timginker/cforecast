@@ -49,7 +49,7 @@ Computes conditional forecasts using the Kalman filter and smoother methods prop
 Clarida and Coyle (1984) and Bańbura et al. (2015). Supports classical VAR models
 (\code{varest} from the \pkg{vars} package). Future implementations will also include Bayesian VAR models
 (\code{bvar} from the \pkg{BVAR} package). For now, for BVAR models the function
-allows analysis at the median of the parameter distribution.
+allows analysis at the median of the posterior distribution.
 }
 \examples{
 library(vars)

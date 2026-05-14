@@ -15,7 +15,8 @@ cforecast_composition(x, target_var)
 a data.frame with the decomposition
 }
 \description{
-Compute Conditional Forecast Composition
+Decomposes a conditional forecast into the contributions of the variables
+across forecast horizons.
 }
 \examples{
 library(cforecast)

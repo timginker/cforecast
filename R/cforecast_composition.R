@@ -1,5 +1,8 @@
 #' Compute Conditional Forecast Composition
 #'
+#' Decomposes a conditional forecast into the contributions of the variables
+#' across forecast horizons.
+#'
 #' @param x cforecast result
 #' @param target_var target variable
 #'
