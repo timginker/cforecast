@@ -12,24 +12,34 @@
 #' @param horizon Optional forecast horizon (number of periods ahead). If \code{NULL}, it is inferred
 #'   from the number of rows in \code{cond_path}
 #' @param p0 Diagonal element of the initial state covariance matrix. Default is \code{1e4}
+#' @param package A character string indicating which backend to use
+#'   (\code{"FKF"} or \code{"KFAS"}). Defaults to \code{"FKF"}.
+#'   The \code{"KFAS"} backend can be useful when the forecast error
+#'   variance matrix is singular or near-singular.
 #'
 #' @importFrom FKF fkf fks
+#' @importFrom KFAS KFS SSModel SSMcustom
 #' @importFrom utils tail
 #' @importFrom vars Acoef Bcoef
 #' @importFrom methods is
 #'
-#' @references Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
-#'   Carnegie-Rochester Conference Series on Public Policy, 20, 247–284.
+#' @references
 #'
-#' @references Bańbura, M., Giannone, D., & Lenza, M. (2015). Conditional forecasts and scenario analysis
+#' Bańbura, M., Giannone, D., & Lenza, M. (2015). Conditional forecasts and scenario analysis
 #'   with vector autoregressions for large cross-sections. \emph{International Journal of Forecasting},
 #'   31(3), 739–756.
+#'
+#' Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
+#'   Carnegie-Rochester Conference Series on Public Policy, 20, 247–284.
+#'
+#' Helske, J. (2017). KFAS: Exponential family state space models in R.
+#' \emph{Journal of Statistical Software}, \bold{78}, 1-39.
 #'
 #' @return A list with:
 #' \itemize{
 #'   \item \code{forecast} — Conditional forecast matrix (horizon × variables)
 #'   \item \code{mse} — Forecast mean squared error (array: K × K × horizon)
-#'   \item \code{fkf} — Output of the Kalman smoother (\code{FKF::fks})
+#'   \item \code{fkf} — Output of the Kalman smoother (\code{FKF::fks} or \code{KFAS::KFS})
 #'   \item \code{ss} — State space representation used in the forecast
 #'   \item \code{cond_var} — Indices of constrained variables
 #'   \item \code{cond_path} — The conditional path used
@@ -56,7 +66,8 @@ cforecast <- function(fit,
                       cond_path,
                       cond_var,
                       horizon = NULL,
-                      p0 = 1e4) {
+                      p0 = 1e4,
+                      package = "FKF") {
 
 
   if (!is.null(horizon)) {
@@ -126,6 +137,7 @@ cforecast <- function(fit,
     y_all <- rbind(y_hist, future_obs)
 
     ## Run Kalman filter and smoother
+    if(package == "FKF"){
     fkf_res <- FKF::fkf(
       a0 = as.numeric(ss$a0), P0 = ss$P0, dt = ss$dt, ct = ss$ct,
       Tt = ss$Tt, Zt = ss$Zt, HHt = ss$HHt, GGt = ss$GGt, yt = t(y_all)
@@ -145,6 +157,41 @@ cforecast <- function(fit,
     for (i in 1:dim(mse)[3]) {
 
       mse[,,i]=round(t(ss$Zt%*%fks_res$Vt[,,dim(fks_res$Vt)[3]-h+i]%*%t(ss$Zt)),10)
+
+    }} else if( package == "KFAS"){
+
+      fit_kfas <- SSModel(
+        as.matrix(y_all) ~ -1+SSMcustom(
+          Z = ss$Zt,
+          T = ss$Tt,
+          R = diag(dim(ss$Tt)[1]),
+          Q = ss$HHt,
+          a1 =ss$a0,
+          P1 =ss$P0,
+          P1inf = matrix(0,nrow = dim(ss$Tt)[1],ncol=dim(ss$Tt)[1])
+        ),
+        H = ss$GGt
+      )
+
+      out <- KFS(fit_kfas, smoothing = c("state", "signal"))
+
+      forecast <- tail(t(ss$Zt%*%t(out$alphahat)),h)
+
+
+      if(!is.null(colnames(y_hist))){
+
+        colnames(forecast)=colnames(y_hist)
+      }
+
+      mse <- array(0,dim=c(dim(forecast)[2],dim(forecast)[2],dim(forecast)[1]))
+
+      for (i in 1:dim(mse)[3]) {
+
+        mse[,,i]=round(t(ss$Zt%*%out$V[,,dim(out$V)[3]-h+i]%*%t(ss$Zt)),10)
+
+      }
+
+      fks_res = out
 
     }
 

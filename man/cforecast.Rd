@@ -4,7 +4,14 @@
 \alias{cforecast}
 \title{Conditional Forecast with VAR or BVAR}
 \usage{
-cforecast(fit, cond_path, cond_var, horizon = NULL, p0 = 10000)
+cforecast(
+  fit,
+  cond_path,
+  cond_var,
+  horizon = NULL,
+  p0 = 10000,
+  package = "FKF"
+)
 }
 \arguments{
 \item{fit}{An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})}
@@ -17,13 +24,18 @@ cforecast(fit, cond_path, cond_var, horizon = NULL, p0 = 10000)
 from the number of rows in \code{cond_path}}
 
 \item{p0}{Diagonal element of the initial state covariance matrix. Default is \code{1e4}}
+
+\item{package}{A character string indicating which backend to use
+(\code{"FKF"} or \code{"KFAS"}). Defaults to \code{"FKF"}.
+The \code{"KFAS"} backend can be useful when the forecast error
+variance matrix is singular or near-singular.}
 }
 \value{
 A list with:
 \itemize{
   \item \code{forecast} — Conditional forecast matrix (horizon × variables)
   \item \code{mse} — Forecast mean squared error (array: K × K × horizon)
-  \item \code{fkf} — Output of the Kalman smoother (\code{FKF::fks})
+  \item \code{fkf} — Output of the Kalman smoother (\code{FKF::fks} or \code{KFAS::KFS})
   \item \code{ss} — State space representation used in the forecast
   \item \code{cond_var} — Indices of constrained variables
   \item \code{cond_path} — The conditional path used
@@ -52,10 +64,13 @@ conditional_forecast <- cforecast(fit = fit, cond_path = cond_path, cond_var = c
 print(conditional_forecast$forecast)
 }
 \references{
-Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
-  Carnegie-Rochester Conference Series on Public Policy, 20, 247–284.
-
 Bańbura, M., Giannone, D., & Lenza, M. (2015). Conditional forecasts and scenario analysis
   with vector autoregressions for large cross-sections. \emph{International Journal of Forecasting},
   31(3), 739–756.
+
+Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
+  Carnegie-Rochester Conference Series on Public Policy, 20, 247–284.
+
+Helske, J. (2017). KFAS: Exponential family state space models in R.
+\emph{Journal of Statistical Software}, \bold{78}, 1-39.
 }
