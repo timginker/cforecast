@@ -9,6 +9,10 @@
 #' @param cond_var A vector indicating which columns of \code{y} are conditionally constrained
 #' @param target_var Column index of the target variable being forecasted
 #' @param horizon Forecast horizon (number of future periods)
+#' @param package A character string indicating which backend to use
+#'   (\code{"FKF"} or \code{"KFAS"}). Defaults to \code{"FKF"}.
+#'   The \code{"KFAS"} backend can be useful when the forecast error
+#'   variance matrix is singular or near-singular.
 #'
 #' @return A list containing two data frames:
 #' \itemize{
@@ -34,7 +38,7 @@
 #' vim <- variable_importance_stat(fit = fit, cond_var = 5, target_var = 2, horizon = 1)
 #'
 #'
-variable_importance_stat <- function(fit, cond_var, target_var, horizon) {
+variable_importance_stat <- function(fit, cond_var, target_var, horizon, package = "FKF") {
 
   if (!inherits(fit, "varest") && !inherits(fit, "bvar")) {
     stop("`fit` must be an object of class 'varest' or 'bvar'.")
@@ -55,7 +59,8 @@ variable_importance_stat <- function(fit, cond_var, target_var, horizon) {
     fit = fit,
     cond_var = cond_var,
     target_var = target_var,
-    horizon = horizon
+    horizon = horizon,
+    package = package
   )
 
   variable_importance_list <- vector("list", horizon)

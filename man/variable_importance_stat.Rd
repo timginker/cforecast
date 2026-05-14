@@ -4,7 +4,7 @@
 \alias{variable_importance_stat}
 \title{Compute Variable Importance for Stationary VAR}
 \usage{
-variable_importance_stat(fit, cond_var, target_var, horizon)
+variable_importance_stat(fit, cond_var, target_var, horizon, package = "FKF")
 }
 \arguments{
 \item{fit}{An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})}
@@ -14,6 +14,11 @@ variable_importance_stat(fit, cond_var, target_var, horizon)
 \item{target_var}{Column index of the target variable being forecasted}
 
 \item{horizon}{Forecast horizon (number of future periods)}
+
+\item{package}{A character string indicating which backend to use
+(\code{"FKF"} or \code{"KFAS"}). Defaults to \code{"FKF"}.
+The \code{"KFAS"} backend can be useful when the forecast error
+variance matrix is singular or near-singular.}
 }
 \value{
 A list containing two data frames:
