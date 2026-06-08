@@ -83,14 +83,14 @@ print(conditional_forecast$forecast)
 }
 \references{
 Carriero, A., Clark, T. E., and M. Marcellino (2015). Bayesian VARs: specification choices and forecast accuracy.
-\emph{Journal of Applied Econometrics}, \bold{30}(1), 46-73.
+\emph{Journal of Applied Econometrics}, \emph{30}(1), 46-73.
 
 Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
-  Carnegie-Rochester Conference Series on Public Policy, \bold{20}, 247–284.
+  Carnegie-Rochester Conference Series on Public Policy, \emph{20}, 247–284.
 
 Helske, J. (2017). KFAS: Exponential family state space models in R.
-\emph{Journal of Statistical Software}, \bold{78}, 1-39.
+\emph{Journal of Statistical Software}, \emph{78}, 1-39.
 
 Kuschnig, N. and L. Vashold (2021). BVAR: Bayesian Vector Autoregressions with Hierarchical Prior Selection in R.
-\emph{Journal of Statistical Software}, \bold{100}(14), 1–27.
+\emph{Journal of Statistical Software}, \emph{100}(14), 1–27.
 }
