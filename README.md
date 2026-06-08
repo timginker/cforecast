@@ -9,7 +9,6 @@
 status](https://www.r-pkg.org/badges/version/cforecast)](https://CRAN.R-project.org/package=cforecast)
 [![CRAN
 downloads](https://cranlogs.r-pkg.org/badges/last-month/cforecast)](https://cran.r-project.org/package=cforecast)
-[![R-CMD-check](https://github.com/timginker/cforecast/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/timginker/cforecast/actions)
 <!-- badges: end -->
 
 **cforecast** is an R package that provides tools for conducting

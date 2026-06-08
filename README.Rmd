@@ -19,7 +19,6 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 [![CRAN status](https://www.r-pkg.org/badges/version/cforecast)](https://CRAN.R-project.org/package=cforecast)
 [![CRAN downloads](https://cranlogs.r-pkg.org/badges/last-month/cforecast)](https://cran.r-project.org/package=cforecast)
-[![R-CMD-check](https://github.com/timginker/cforecast/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/timginker/cforecast/actions)
 <!-- badges: end -->
 
 **cforecast** is an R package that provides tools for conducting scenario analysis in reduced-form vector autoregressive (VAR) models. It implements a Kalman filtering framework to generate forecasts under path restrictions on selected variables. The package enables decomposition of conditional forecasts into variable-specific contributions and extraction of observation weights. It also computes measures of overall and marginal variable importance to enhance the economic interpretation of forecast revisions. The framework is structurally agnostic and suited for policy analysis, stress testing, and macro-financial applications.
