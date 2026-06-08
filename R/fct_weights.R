@@ -7,7 +7,7 @@
 #' @param cond_var A vector indicating which columns of `y` are conditionally constrained
 #' @param target_var Column index of the target variable being forecast
 #' @param horizon Forecast horizon (number of future periods)
-#' @param p0 diagonal element of the initial state covariance, with default of 1e4
+#' @param p0 diagonal element of the initial state covariance, with default of 1e6
 #' @param package A character string indicating which backend to use
 #'   (\code{"FKF"} or \code{"KFAS"}). Defaults to \code{"FKF"}.
 #'   The \code{"KFAS"} backend can be useful when the forecast error
@@ -29,7 +29,7 @@
 #' fct_weights_fm <- fct_weights(fit = fit, cond_var = 5, target_var = 2, horizon = 1)
 #' # note that only DCOILWTICO's weight is nonzero for h=1
 #'
-fct_weights <- function(fit, cond_var, target_var, horizon, p0 = 1e4,package = "FKF") {
+fct_weights <- function(fit, cond_var, target_var, horizon, p0 = 1e6,package = "FKF") {
 
 
   if (!is.numeric(horizon) || length(horizon) != 1 || horizon < 1) {

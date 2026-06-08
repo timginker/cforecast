@@ -1,7 +1,9 @@
 #' Compute Variable Importance for Stationary VAR
 #'
-#' Computes the relative importance of each variable in a conditional forecast
-#' from a stationary VAR model. Supports both classical VAR models (from the
+#' Computes ex-ante variable importance measures for conditional forecasting in a stationary VAR. Variable importance
+#' quantifies the contribution of a variable to the forecast, taking into account both historical observations
+#' and future conditioning constraints. Marginal variable importance quantifies the contribution of
+#' future conditioning constraints relative to the total forecast weight of each variable. Supports both classical VAR models (from the
 #' \pkg{vars} package) and Bayesian VAR models (from the \pkg{BVAR} package) for which
 #' the computation is performed at the median of the posterior distribution.
 #'

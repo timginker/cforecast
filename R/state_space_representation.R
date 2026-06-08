@@ -6,7 +6,7 @@
 #' at the median of the parameter distribution.
 #'
 #' @param fit An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})
-#' @param p0 diagonal element of the initial state covariance, with default of 1e4
+#' @param p0 diagonal element of the initial state covariance, with default of 1e6
 #'
 #'
 #' @return A list containing the state space system matrices:
@@ -17,7 +17,7 @@
 #'   \item \code{HHt} — process noise covariance
 #'   \item \code{dt} — deterministic component (e.g., constant)
 #'   \item \code{a0} — initial state vector
-#'   \item \code{P0} — initial state covariance (diagonal, with default value \code{1e4})
+#'   \item \code{P0} — initial state covariance (diagonal, with default value \code{1e6})
 #' }
 #'
 #' @importFrom vars Acoef Bcoef VAR
@@ -43,7 +43,7 @@
 #' fit_bvar <- bvar(data, lags = 2, n_draw = 1000L, n_burn = 200L, verbose = FALSE)
 #' ss_bvar <- state_space_representation(fit_bvar)
 
-state_space_representation <- function(fit,p0=1e4) {
+state_space_representation <- function(fit,p0=1e6) {
 
   if (!inherits(fit, "varest") && !inherits(fit, "bvar")) {
     stop("`fit` must be an object of class 'varest' or 'bvar'.")

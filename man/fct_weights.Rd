@@ -4,7 +4,7 @@
 \alias{fct_weights}
 \title{Conditional Forecast Variable Weights}
 \usage{
-fct_weights(fit, cond_var, target_var, horizon, p0 = 10000, package = "FKF")
+fct_weights(fit, cond_var, target_var, horizon, p0 = 1e+06, package = "FKF")
 }
 \arguments{
 \item{fit}{An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})}
@@ -15,7 +15,7 @@ fct_weights(fit, cond_var, target_var, horizon, p0 = 10000, package = "FKF")
 
 \item{horizon}{Forecast horizon (number of future periods)}
 
-\item{p0}{diagonal element of the initial state covariance, with default of 1e4}
+\item{p0}{diagonal element of the initial state covariance, with default of 1e6}
 
 \item{package}{A character string indicating which backend to use
 (\code{"FKF"} or \code{"KFAS"}). Defaults to \code{"FKF"}.

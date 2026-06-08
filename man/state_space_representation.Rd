@@ -4,12 +4,12 @@
 \alias{state_space_representation}
 \title{State Space Representation}
 \usage{
-state_space_representation(fit, p0 = 10000)
+state_space_representation(fit, p0 = 1e+06)
 }
 \arguments{
 \item{fit}{An object of class \code{varest} (from \pkg{vars}) or \code{bvar} (from \pkg{BVAR})}
 
-\item{p0}{diagonal element of the initial state covariance, with default of 1e4}
+\item{p0}{diagonal element of the initial state covariance, with default of 1e6}
 }
 \value{
 A list containing the state space system matrices:
@@ -20,7 +20,7 @@ A list containing the state space system matrices:
   \item \code{HHt} — process noise covariance
   \item \code{dt} — deterministic component (e.g., constant)
   \item \code{a0} — initial state vector
-  \item \code{P0} — initial state covariance (diagonal, with default value \code{1e4})
+  \item \code{P0} — initial state covariance (diagonal, with default value \code{1e6})
 }
 }
 \description{

@@ -9,7 +9,7 @@ cforecast(
   cond_path,
   cond_var,
   horizon = NULL,
-  p0 = 10000,
+  p0 = 1e+06,
   package = "FKF"
 )
 }
@@ -23,7 +23,7 @@ cforecast(
 \item{horizon}{Optional forecast horizon (number of periods ahead). If \code{NULL}, it is inferred
 from the number of rows in \code{cond_path}}
 
-\item{p0}{Diagonal element of the initial state covariance matrix. Default is \code{1e4}}
+\item{p0}{Diagonal element of the initial state covariance matrix. Default is \code{1e6}}
 
 \item{package}{A character string indicating which backend to use
 (\code{"FKF"} or \code{"KFAS"}). Defaults to \code{"FKF"}.
@@ -47,9 +47,27 @@ A list with:
 \description{
 Computes conditional forecasts using the Kalman filter and smoother methods proposed by
 Clarida and Coyle (1984) and Bańbura et al. (2015). Supports classical VAR models
-(\code{varest} from the \pkg{vars} package). Future implementations will also include Bayesian VAR models
-(\code{bvar} from the \pkg{BVAR} package). For now, for BVAR models the function
-allows analysis at the median of the posterior distribution.
+(\code{varest} from the \pkg{vars} package) and Bayesian VAR models
+(\code{bvar} from the \pkg{BVAR} package).
+}
+\details{
+For Bayesian VARs, conditional forecasts are computed at the posterior median of the
+model parameters using a plug-in approximation. This approach is related to the
+approximation methods considered by Carriero et al. (2015), who find little benefit
+from simulation-based Bayesian forecasting for point predictions. The plug-in
+representation enables efficient computation of forecast decompositions and other
+interpretability tools provided by the package.
+
+The primary focus of \pkg{cforecast} is forecast interpretation and decomposition.
+Users interested in the full conditional forecast distribution and posterior predictive
+uncertainty can obtain these using dedicated Bayesian VAR packages such as
+\pkg{BVAR}, which provide simulation-based inference and density forecasting.
+
+Two Kalman filtering backends are available: \code{"FKF"} (default) and
+\code{"KFAS"}. The \code{"FKF"} backend is generally faster and is recommended
+for most applications. The \code{"KFAS"} backend can be used when the forecast
+error covariance matrix is singular or near-singular, situations in which
+\code{"FKF"} may fail.
 }
 \examples{
 library(vars)
@@ -64,13 +82,15 @@ conditional_forecast <- cforecast(fit = fit, cond_path = cond_path, cond_var = c
 print(conditional_forecast$forecast)
 }
 \references{
-Bańbura, M., Giannone, D., & Lenza, M. (2015). Conditional forecasts and scenario analysis
-  with vector autoregressions for large cross-sections. \emph{International Journal of Forecasting},
-  31(3), 739–756.
+Carriero, A., Clark, T. E., and M. Marcellino (2015). Bayesian VARs: specification choices and forecast accuracy.
+\emph{Journal of Applied Econometrics}, \bold{30}(1), 46-73.
 
 Clarida, R. and D. Coyle (1984). Conditional Projection by Means of Kalman Filtering.
-  Carnegie-Rochester Conference Series on Public Policy, 20, 247–284.
+  Carnegie-Rochester Conference Series on Public Policy, \bold{20}, 247–284.
 
 Helske, J. (2017). KFAS: Exponential family state space models in R.
 \emph{Journal of Statistical Software}, \bold{78}, 1-39.
+
+Kuschnig, N. and L. Vashold (2021). BVAR: Bayesian Vector Autoregressions with Hierarchical Prior Selection in R.
+\emph{Journal of Statistical Software}, \bold{100}(14), 1–27.
 }
