@@ -91,20 +91,32 @@ library(scales)
 library(patchwork)
 })
 
-# Load packaged dataset
-data(fred_macro)
-data("DCOILWTICO_level")
+# ---------- 1. Data --------------------------------------------------
+data(fred_macro)         # GDPC1, PCEPILFE Q/Q %; FEDFUNDS, BAA10YM level; DCOILWTICO Q/Q %
+data(DCOILWTICO_level)   # WTI level (for plotting only)
 
-# Restrict estimation sample
-df <- fred_macro %>%
-  filter(year(date) >= 1986,
-         year(date) <= 2015)
+VAR_NAMES <- c("GDPC1", "PCEPILFE", "FEDFUNDS", "BAA10YM", "DCOILWTICO")
+LABELS <- c(
+  GDPC1      = "Real GDP growth",
+  PCEPILFE   = "Core PCE inflation",
+  FEDFUNDS   = "Federal funds rate",
+  BAA10YM    = "Baa-10Y credit spread",
+  DCOILWTICO = "WTI crude oil price"
+)
 
-# Estimate VAR(2)
-fit <- VAR(df[, -1], p = 2, type = "const")
+# Estimation sample: 1986Q2 .. 2015Q4 (paper sample, T+1 = 2016Q1)
+sample_data <- subset(fred_macro, date <= as.Date("2015-12-31"))
+y_mat       <- as.matrix(sample_data[, VAR_NAMES])
 
+T_hist     <- nrow(y_mat)
+last_date  <- max(sample_data$date)
+
+# ---------- 2. VAR estimation: VAR(p) with constant, p chosen by BIC -
+sel <- VARselect(y_mat, lag.max = 8, type = "const")
+p_bic <- sel$selection["SC(n)"]
+fit <- VAR(y_mat, p = p_bic, type = "const")
 # Baseline forecast
-pred_base <- predict(fit, n.ahead = 20)
+unc_fc <- predict(fit, n.ahead = 20)
 ```
 
 
@@ -127,153 +139,159 @@ This structure mimics a temporary macro-financial stress episode with persistent
 The following plot creates the scenario and plots it:
 
 
-```{r message=FALSE}
-# Slicing Oil data
-DCOILWTICO_level %>% 
-  mutate(date = as.Date(date)) %>% 
-  dplyr::filter(year(date) >= 1986, year(date) <= 2015) %>% 
-  slice(-1) -> DCOILWTICO_level
+```{r message=FALSE, out.width = "70%"}
 
-# Baseline path for oil prices (reconstructed in levels)
-pred_base <- predict(fit, n.ahead = 20)
-oil_base <- rep(NA, 20)
-oil_base[1] <- tail(DCOILWTICO_level$DCOILWTICO, 1) *
-  (1 + pred_base$fcst$DCOILWTICO[1, 1] / 100)
+H              <- 20
+forecast_dates <- seq(as.Date("2016-03-31"), by = "3 months", length.out = H)
 
-for (i in 2:20) {
-  oil_base[i] <- oil_base[i - 1] *
-    (1 + pred_base$fcst$DCOILWTICO[i, 1] / 100)
+baa_idx <- which(VAR_NAMES == "BAA10YM")
+oil_idx <- which(VAR_NAMES == "DCOILWTICO")
+pce_idx <- which(VAR_NAMES == "PCEPILFE")
+
+baa_base <- unc_fc$fcst[["BAA10YM"]][, "fcst"]
+oil_base <- unc_fc$fcst[["DCOILWTICO"]][, "fcst"]   # Q/Q %
+pce_base <- unc_fc$fcst[["PCEPILFE"]][, "fcst"]
+
+# Scenario (Section 3 of paper):
+#   * Credit spread: ~200bp widening, decays toward ~3.2
+#   * WTI: rises to peak ~$75 in 2016Q4, then mean-reverts to ~$40-43
+baa_scen <- 3.2 + 2.0 * exp(-0.5 * (0:(H - 1)))
+
+last_oil_level <- subset(DCOILWTICO_level,
+                         date == as.Date("2015-12-31"))$DCOILWTICO
+oil_target_levels <- c(48, 58, 70, 75, 72, 62, 50, 44,
+                       42, 40, 41, 42, 42, 41, 42, 43, 42, 41, 43, 42)
+oil_scen <- diff(c(last_oil_level, oil_target_levels)) /
+              c(last_oil_level, oil_target_levels[-H]) * 100  # Q/Q %
+
+# Build the level path implied by the unconditional baseline (plotting)
+oil_base_levels <- numeric(H); prev <- last_oil_level
+for (i in seq_len(H)) {
+  oil_base_levels[i] <- prev * (1 + oil_base[i] / 100)
+  prev <- oil_base_levels[i]
 }
 
-# Imposed scenario paths for credit spreads and oil prices
-delta <- 0.7
-BAA10YM_future <- c(
-  rep(tail(df$BAA10YM, 1) + 2, 3),
-  (tail(df$BAA10YM, 1) + 2 * delta^(1:17))
+
+# Table 01: scenario inputs (Figure 1) --------------------------------
+hist_wti <- subset(DCOILWTICO_level,
+                   date <= as.Date("2015-12-31") & date >= as.Date("1986-06-30"))
+
+t01_wti <- bind_rows(
+  hist_wti %>% transmute(date, series = "WTI", type = "Historical",
+                         value = DCOILWTICO),
+  tibble(date = forecast_dates, series = "WTI",
+         type = "Baseline (unconditional)", value = oil_base_levels),
+  tibble(date = forecast_dates, series = "WTI",
+         type = "Scenario", value = oil_target_levels)
+)
+t01_baa <- bind_rows(
+  sample_data %>% transmute(date, series = "BAA10YM",
+                            type = "Historical", value = BAA10YM),
+  tibble(date = forecast_dates, series = "BAA10YM",
+         type = "Baseline (unconditional)", value = baa_base),
+  tibble(date = forecast_dates, series = "BAA10YM",
+         type = "Scenario", value = baa_scen)
 )
 
-DCOILWTICO_future <- c(
-  tail(DCOILWTICO_level$DCOILWTICO, 1) * (1.155061^(1:4)),
-  tail(DCOILWTICO_level$DCOILWTICO, 1) + 33.06 * delta^(1:16)
+wti_df <- bind_rows(
+  hist_wti %>% transmute(date, value = DCOILWTICO, type = "Historical"),
+  tibble(date = forecast_dates, value = oil_base_levels,
+         type = "Baseline (unconditional)"),
+  tibble(date = forecast_dates, value = oil_target_levels,
+         type = "Scenario"),
+  tibble(date = last_date,
+         value = subset(DCOILWTICO_level, date == last_date)$DCOILWTICO,
+         type = "Baseline (unconditional)"),
+  tibble(date = last_date,
+         value = subset(DCOILWTICO_level, date == last_date)$DCOILWTICO,
+         type = "Scenario")
 )
 
-# Extended date vector covering the forecast horizon
-dates_0 <- fred_macro$date[1:(nrow(df) + 20)]
 
-# Construct plotting data for the credit-spread scenario input:
-#   - y: historical series (in-sample)
-#   - y_base: baseline (unconditional) VAR forecast appended after the sample end
-#   - y_fcst: imposed scenario path appended after the sample end
-# Missing values are used to prevent ggplot from drawing lines outside the
-# intended segments (history vs forecast).
-
-df_plot <- data.frame(
-  date = dates_0,
-  y = c(df$BAA10YM, rep(NA,length(BAA10YM_future))),
-  y_base = c(rep(NA,nrow(df)-1),
-             tail(df$BAA10YM,1),pred_base$fcst$BAA10YM[,1]),
-  y_fcst = c(rep(NA,nrow(df)-1),
-             tail(df$BAA10YM,1),BAA10YM_future)
+# =====================================================================
+# FIGURE STYLING
+# =====================================================================
+COL <- list(
+  navy   = "#1B365D", blue = "#3B5C8A", yellow = "#E8D055",
+  gold   = "#D4B43F", gray = "#8B8B8B", beige  = "#C0B392",
+  red    = "#C84050"
+)
+PALETTE_VAR <- c(
+  BAA10YM    = COL$navy,
+  DCOILWTICO = COL$blue,
+  FEDFUNDS   = COL$gray,
+  GDPC1      = COL$beige,
+  PCEPILFE   = COL$yellow
 )
 
-# Plot the credit-spread path:
-# Solid line: historical data
-# Dashed line: imposed scenario path used for conditioning
-# Dotted line: baseline path implied by the VAR
-p_baa <- ggplot(df_plot, aes(x = date)) +
-  geom_line(aes(y = y), color = "black", linewidth = 0.8) +
-  geom_line(
-    aes(y = y_fcst),
-    color = "black",
-    linewidth = 0.7,
-    linetype = "dashed"
-  ) +
-  geom_line(
-    aes(y = y_base),
-    color = "black",
-    linewidth = 0.7,
-    linetype = "dotted"
-  )+
-  labs(
-    title = "Moody's Seasoned Baa Corporate Bond Yield Relative to \nYield on 10-Year Treasury Constant Maturity",
-    #caption = "Notes: The solid line shows historical data. The dashed line denotes the conditional \nforecast under the imposed scenario. The dotted line shows the unconditional (baseline) forecast.",
-    x = NULL,
-    y = "Percentage points"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    plot.title = element_text(size = 12),
-    axis.text.y = element_text(size = 8)
-    #plot.title = element_text(face = "bold")
-  )
+theme_boi <- function(base_size = 11) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.title         = element_text(face = "bold", size = rel(1.0),
+                                        hjust = 0, margin = margin(b = 2)),
+      plot.subtitle      = element_text(size = rel(0.85), color = "grey25",
+                                        hjust = 0, margin = margin(b = 6)),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor   = element_blank(),
+      panel.grid.major.y = element_line(color = "grey88", linewidth = 0.4),
+      axis.title         = element_text(size = rel(0.85)),
+      axis.text          = element_text(size = rel(0.85), color = "grey20"),
+      axis.ticks.x       = element_line(color = "grey50"),
+      axis.ticks.y       = element_blank(),
+      axis.line.x        = element_line(color = "grey50"),
+      legend.position    = "top",
+      legend.title       = element_blank(),
+      legend.text        = element_text(size = rel(0.8)),
+      legend.key.size    = unit(0.7, "lines"),
+      plot.margin        = margin(8, 12, 8, 12)
+    )
+}
 
+p_wti <- ggplot(wti_df, aes(date, value, linetype = type, group = type)) +
+  geom_line(linewidth = 0.55, color = "black") +
+  scale_linetype_manual(values = c("Historical" = "solid",
+                                   "Baseline (unconditional)" = "dotted",
+                                   "Scenario" = "dashed")) +
+  scale_y_continuous(breaks = c(25, 50, 75, 100, 125)) +
+  scale_x_date(breaks = as.Date(paste0(seq(1990, 2020, 10), "-01-01")),
+               date_labels = "%Y") +
+  labs(title = "WTI Crude Oil Price",
+       x = NULL, y = "USD per barrel") +
+  theme_boi() + theme(legend.position = "none")
 
-# Construct plotting data for the oil price scenario input (in levels):
-#   - y: historical oil price (levels series)
-#   - y_fcst: imposed scenario oil price path in levels
-#   - y_base: baseline oil price path reconstructed from VAR forecasts
-# As above, NA padding separates the historical segment from forecast segments.
-
-df_plot_oil <- data.frame(
-  date = dates_0,
-  y = c(DCOILWTICO_level$DCOILWTICO, rep(NA,length(DCOILWTICO_future))),
-  y_fcst = c(rep(NA,nrow(df)-1), 
-             tail(DCOILWTICO_level$DCOILWTICO,1),DCOILWTICO_future),
-  y_base = c(rep(NA,nrow(df)-1), 
-             tail(DCOILWTICO_level$DCOILWTICO,1),oil_base)
+last_baa <- tail(sample_data$BAA10YM, 1)
+baa_df <- bind_rows(
+  sample_data %>% transmute(date, value = BAA10YM, type = "Historical"),
+  tibble(date = forecast_dates, value = baa_base,
+         type = "Baseline (unconditional)"),
+  tibble(date = forecast_dates, value = baa_scen, type = "Scenario"),
+  tibble(date = last_date, value = last_baa,
+         type = "Baseline (unconditional)"),
+  tibble(date = last_date, value = last_baa, type = "Scenario")
 )
 
-# Plot the oil price path:
-# Solid line: historical data
-# Dashed line: imposed scenario path used for conditioning
-# Dotted line: baseline path implied by the VAR (in levels)
-p_oil <- ggplot(df_plot_oil, aes(x = date)) +
-  geom_line(aes(y = y), color = "black", linewidth = 0.8) +
-  geom_line(
-    aes(y = y_fcst),
-    color = "black",
-    linewidth = 0.7,
-    linetype = "dashed"
-  ) +
-  geom_line(
-    aes(y = y_base),
-    color = "black",
-    linewidth = 0.7,
-    linetype = "dotted"
-  )+
-  labs(
-    title = "WTI Crude Oil Price",
-    subtitle = "History (solid), baseline (dotted), and scenario (dashed)",
-    x = NULL,
-    y = "USD per barrel"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    plot.title = element_text(size = 12),
-    axis.text.y = element_text(size = 8)
-  )
+p_baa <- ggplot(baa_df, aes(date, value, linetype = type, group = type)) +
+  geom_line(linewidth = 0.55, color = "black") +
+  scale_linetype_manual(values = c("Historical" = "solid",
+                                   "Baseline (unconditional)" = "dotted",
+                                   "Scenario" = "dashed")) +
+  scale_y_continuous(breaks = c(2, 3, 4, 5)) +
+  scale_x_date(breaks = as.Date(paste0(seq(1990, 2020, 10), "-01-01")),
+               date_labels = "%Y") +
+  labs(title = paste0("Moody's Seasoned Baa Corporate Bond Yield Relative to\n",
+                      "Yield on 10-Year Treasury Constant Maturity"),
+       x = NULL, y = "Percentage points") +
+  theme_boi() +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", size = rel(0.92), hjust = 0))
 
+gridExtra::grid.arrange(
+  p_wti,
+  p_baa,
+  ncol = 1,
+  heights = c(1, 1.05)
+)
 
-# Align x-axis limits across the two panels to ensure consistent time coverage
-# and facilitate direct visual comparison of the two conditioning paths.
-x_rng <- range(c(df_plot_oil$date, df_plot$date), na.rm = TRUE)
-
-# Combine the two scenario-input panels into a single figure:
-# Oil price on top; credit spread below. X-axis annotations are removed from
-# the top panel to avoid duplication and improve readability.
-combined_plot_scenarios <-
-  (p_oil + scale_x_date(limits = x_rng) +
-     theme(axis.title.x = element_blank(),
-           axis.text.x  = element_blank(),
-           axis.ticks.x = element_blank())) /
-  (p_baa + scale_x_date(limits = x_rng))
-
-
-suppressWarnings(combined_plot_scenarios)
 ```
 
 
@@ -292,7 +310,7 @@ Importantly, this assessment does not require realized future values.
 
 The plot below reports the overall variable importance:
 
-```{r}
+```{r out.width = "70%"}
 v_imp=variable_importance_stat(fit=fit,
                                cond_var = 4:5,
                                target_var = 2,
@@ -332,8 +350,9 @@ plt = ggplot(v_imp$variable_importance,
 plt 
 ```
 
+The results below are based on the overall variable importance measure, which quantifies the total contribution of each variable to the forecast, taking into account both historical observations and future conditioning constraints.
 
-The results indicate that the importance of the credit spread increases steadily with the forecast horizon. This pattern suggests that financial conditions—particularly corporate credit risk—play an increasingly prominent role in shaping medium-term inflation dynamics. This finding is consistent with evidence that credit spreads contain predictive information for demand-side pressures (e.g., Lopez-Salido et al., 2017; Caldara and Herbst, 2019).
+It is evident that he importance of the credit spread increases steadily with the forecast horizon. This pattern suggests that financial conditions—particularly corporate credit risk—play an increasingly prominent role in shaping medium-term inflation dynamics. This finding is consistent with evidence that credit spreads contain predictive information for demand-side pressures (e.g., Lopez-Salido et al., 2017; Caldara and Herbst, 2019).
 
 By contrast, oil prices contribute more modestly to the core inflation forecast. Their importance rises slightly at longer horizons—an intuitive result given that core inflation excludes energy components and oil affects inflation only indirectly through production costs and aggregate demand.
 
@@ -341,50 +360,37 @@ The federal funds rate, although unconstrained in the scenario, contributes thro
 
 Finally, GDP growth receives minimal weight in the decomposition. This reflects its weak marginal signal once financial and commodity variables are accounted for and aligns with evidence that real activity indicators offer limited incremental predictive content for inflation (Stock and Watson, 2007).
 
----
-
 ## Marginal Variable Importance
 
-The plot below reports the marginal importance:
+The plot below reports the marginal variable importance:
 
-```{r}
-
-plt_mimp = ggplot(subset(v_imp$marginal_variable_importance,share!=0),
-             aes(x = factor(horizon),
-                 y = share,
-                 fill = variable)) +
-  geom_col(position = "fill", width = 0.75, color = "white", linewidth = 0.2) +
-  scale_y_continuous(
-    labels = percent_format(accuracy = 1),
-    expand = expansion(mult = c(0, 0.02))
-  ) +
-  scale_fill_viridis_d(option = "cividis", end = 0.9) +
-  labs(
-    title = "Decomposition of Conditional Core Inflation Forecast",
-    subtitle = "Marginal variable importance by forecast horizon",
-    x = "Forecast horizon (quarters ahead)",
-    y = "Share of information (percent)",
-    fill = NULL
-  ) +
-  theme_classic(base_size = 12) +
-  theme(
-    plot.title = element_text(face = "bold", size = 11),
-    plot.subtitle = element_text(size = 10),
-    axis.title = element_text(size = 11),
-    axis.text  = element_text(size = 10),
-    legend.position = "top",
-    legend.text = element_text(size = 10),
-    legend.key.size = unit(0.35, "cm"),
-    axis.line = element_line(linewidth = 0.3),
-    axis.ticks = element_line(linewidth = 0.3)
-  )
+```{r out.width = "70%"}
+mi_df <- v_imp$marginal_variable_importance %>%
+  filter(variable %in% c("BAA10YM", "DCOILWTICO")) %>%
+  group_by(horizon) %>%
+  ungroup() %>%
+  mutate(variable = factor(variable, levels = c("BAA10YM", "DCOILWTICO")))
 
 
-plt_mimp
+p3 <- ggplot(mi_df, aes(x = factor(horizon), y = share, fill = variable)) +
+  geom_col(width = 0.85) +
+  scale_y_continuous(labels = label_percent(), expand = c(0, 0),
+                     breaks = c(0, 0.25, 0.5, 0.75, 1.0)) +
+  scale_fill_manual(values = PALETTE_VAR[c("BAA10YM", "DCOILWTICO")],
+                    drop = FALSE) +
+  labs(title    = "Decomposition of Conditional Core Inflation Forecast",
+       subtitle = "Marginal variable importance by forecast horizon",
+       x = "Forecast horizon (quarters ahead)",
+       y = "Share of information (percent)") +
+  theme_boi() + theme(legend.position = "top")
+
+p3
 ```
 
 
-Marginal variable importance isolates the contribution of the imposed future constraints. The decomposition is dominated by the corporate credit spread, while oil prices gain importance gradually at longer horizons due to their indirect and lagged transmission to core inflation.
+The marginal importance results broadly confirm the dominant role of the credit spread. Unlike overall importance, however, marginal importance measures the share of forecast weight attributable to future conditioning constraints. For the credit spread, this share ranges from roughly 24% to 30% across horizons, indicating that the conditional forecast is highly sensitive to the assumed future path of credit market conditions.
+
+
 
 Taken together, the overall and marginal importance measures highlight an important distinction:
 
@@ -411,7 +417,7 @@ The code below illustrates the implementation:
 
 ```{r message=FALSE}
 # Construct conditioning matrix
-cond_path <- cbind(BAA10YM_future, DCOILWTICO_future)
+cond_path <- cbind(baa_scen, oil_scen)
 
 # Generate conditional forecast
 fct_constr <- cforecast(
@@ -430,53 +436,39 @@ The contribution of oil prices increases gradually over the forecast horizon, re
 
 ```{r message=FALSE}
 # Build a plotting data set for core inflation with history and both forecasts
-df_plot_infl = data.frame(
-  date = dates_0,
-  y = c(df$PCEPILFE, rep(NA,length(BAA10YM_future))),
-  y_base = c(rep(NA,nrow(df)-1),
-             tail(df$PCEPILFE,1),pred_base$fcst$PCEPILFE[,1]),
-  y_fcst = c(rep(NA,nrow(df)-1),
-             tail(df$PCEPILFE,1),fct_constr$forecast[,2])
+
+pce_scen   <- fct_constr$forecast[, "PCEPILFE"]
+
+t04 <- bind_rows(
+  sample_data %>% transmute(date, type = "Historical", value = PCEPILFE),
+  tibble(date = forecast_dates, type = "Baseline (unconditional)", value = pce_base),
+  tibble(date = forecast_dates, type = "Scenario", value = pce_scen)
 )
 
-# Plot historical inflation and the conditional/unconditional forecasts
-plt_fct_scenarios <-ggplot(df_plot_infl, aes(x = date)) +
-  geom_line(aes(y = y), color = "black", linewidth = 0.8) +
-  geom_line(
-    aes(y = y_fcst),
-    color = "black",
-    linewidth = 0.7,
-    linetype = "dashed"
-  ) +
-  geom_line(
-    aes(y = y_base),
-    color = "black",
-    linewidth = 0.7,
-    linetype = "dotted"
-  ) +
-  labs(
-    title = "Core Inflation Forecasts (PCE Excluding Food and Energy)",
-    #subtitle = "Conditional and unconditional projections",
-    x = NULL,
-    y = "Percent, quarterly rate",
-    caption = "Notes: The solid line shows historical core PCE inflation. The dashed line denotes the conditional \nforecast under the imposed scenario. The dotted line shows the unconditional (baseline) forecast."
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    plot.title = element_text(face = "bold", size = 11),
-    plot.subtitle = element_text(size = 10),
-    axis.text.y = element_text(size = 8),
-    axis.text.x = element_text(size = 9),
-    plot.caption = element_text(
-      hjust = 0,
-      size = 9,
-      color = "grey30"
-    )
-  )
+pce_hist <- sample_data %>% transmute(date, value = PCEPILFE, type = "Historical")
+pce_df <- bind_rows(
+  pce_hist,
+  tibble(date = forecast_dates, value = pce_base,
+         type = "Baseline (unconditional)"),
+  tibble(date = forecast_dates, value = pce_scen, type = "Scenario"),
+  tibble(date = last_date, value = tail(pce_hist$value, 1),
+         type = "Baseline (unconditional)"),
+  tibble(date = last_date, value = tail(pce_hist$value, 1),
+         type = "Scenario")
+)
+p4 <- ggplot(pce_df, aes(date, value, linetype = type, group = type)) +
+  geom_line(linewidth = 0.55, color = "black") +
+  scale_linetype_manual(values = c("Historical" = "solid",
+                                   "Baseline (unconditional)" = "dotted",
+                                   "Scenario" = "dashed")) +
+  scale_y_continuous(breaks = c(0.0, 0.5, 1.0)) +
+  scale_x_date(breaks = as.Date(paste0(seq(1990, 2020, 10), "-01-01")),
+               date_labels = "%Y") +
+  labs(title = "Core Inflation Forecasts (PCE Excluding Food and Energy)",
+       x = NULL, y = "Percent, quarterly rate") +
+  theme_boi() + theme(legend.position = "none")
 
-suppressWarnings(plt_fct_scenarios)
+suppressWarnings(p4)
 ```
 
 
