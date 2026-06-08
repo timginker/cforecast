@@ -1,6 +1,6 @@
 #' Conditional Forecast with VAR or BVAR
 #'
-#' Computes conditional forecasts using the Kalman filter and smoother methods proposed by
+#' Computes conditional forecasts using the Kalman smoother methods of
 #' Clarida and Coyle (1984) and Bańbura et al. (2015). Supports classical VAR models
 #' (\code{varest} from the \pkg{vars} package) and Bayesian VAR models
 #' (\code{bvar} from the \pkg{BVAR} package).
@@ -42,6 +42,9 @@
 #' @importFrom methods is
 #'
 #' @references
+#'
+#' Bańbura, M., Giannone, D., and M. Lenza (2015). Conditional forecasts and scenario analysis with
+#' vector autoregressions for large cross-sections. \emph{International Journal of forecasting}, \emph{31}(3), 739-756.
 #'
 #' Carriero, A., Clark, T. E., and M. Marcellino (2015). Bayesian VARs: specification choices and forecast accuracy.
 #' \emph{Journal of Applied Econometrics}, \emph{30}(1), 46-73.
