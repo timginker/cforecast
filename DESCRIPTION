@@ -1,7 +1,7 @@
 Package: cforecast
 Type: Package
 Title: Conditional Forecasting and Scenario Analysis Using VAR Models
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: 
     person(given = "Tim",
            family = "Ginker",
@@ -9,8 +9,8 @@ Authors@R:
            email = "tim.ginker@gmail.com")
 Maintainer: Tim Ginker <tim.ginker@gmail.com> 
 Description: 
-    Provides tools for conducting scenario analysis in reduced-form vector autoregressive (VAR) models. 
-    Implements a Kalman filtering framework to generate forecasts under 
+    Provides tools for interpretable conditional forecasting and scenario analysis in reduced-form vector autoregressive (VAR) models. 
+    Implements a Kalman smoothing framework to generate forecasts under 
     path restrictions on selected variables. The package enables decomposition 
     of conditional forecasts into variable-specific contributions, and extraction 
     of observation weights. It also computes measures of overall and marginal variable importance to enhance 
